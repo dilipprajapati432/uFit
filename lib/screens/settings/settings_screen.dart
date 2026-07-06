@@ -242,6 +242,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           // ── Support ───────────────────────────────────────
           _SectionLabel('Support'),
+          _SettingTile(icon: Icons.info_outline_rounded, label: 'About uFit', onTap: () => context.push('/about')),
           _SettingTile(icon: Icons.help_outline_rounded, label: 'Help Center', onTap: () => context.push('/help-center')),
           _SettingTile(icon: Icons.mail_outline_rounded, label: 'Contact Support', onTap: () => _launchUrl('mailto:dilipkohar4320@gmail.com?subject=uFit Support')),
           _SettingTile(icon: Icons.star_outline_rounded, label: 'Rate uFit ⭐', onTap: () => _showInfoDialog('Rate uFit', 'Thank you for using uFit! ❤️\n\nWe will add the Play Store link here once the app is published. Stay tuned!')),
@@ -264,17 +265,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onTap: () => _confirmDeleteAccount(),
           ),
 
-          const SizedBox(height: 24),
-          Center(
-            child: Column(
-              children: [
-                Text('uFit', style: TextStyle(color: context.textMuted, fontWeight: FontWeight.w700)),
-                Text('Version $_appVersion', style: TextStyle(color: context.textMuted, fontSize: 11)),
-                const SizedBox(height: 4),
-                Text('Made with ❤️ for your health', style: TextStyle(color: context.textMuted, fontSize: 11)),
-              ],
-            ),
-          ),
           const SizedBox(height: 40),
         ],
       ),

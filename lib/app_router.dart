@@ -18,6 +18,7 @@ import 'screens/premium/premium_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/settings/edit_profile_screen.dart';
 import 'screens/settings/settings_screen.dart';
+import 'screens/settings/about_screen.dart';
 import 'screens/settings/legal_screen.dart';
 import 'screens/settings/help_center_screen.dart';
 import 'screens/sleep/sleep_screen.dart';
@@ -61,6 +62,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/legal-terms', builder: (c, s) => const LegalScreen(isPrivacyPolicy: false)),
       GoRoute(path: '/legal-privacy', builder: (c, s) => const LegalScreen(isPrivacyPolicy: true)),
       GoRoute(path: '/help-center', builder: (c, s) => const HelpCenterScreen()),
+      GoRoute(path: '/about', builder: (c, s) => const AboutScreen()),
       ShellRoute(
         builder: (context, state, child) => MainScaffold(
           currentPath: state.matchedLocation,
