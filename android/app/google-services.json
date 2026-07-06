@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "605281237568",
+    "project_id": "ufit-3771b",
+    "storage_bucket": "ufit-3771b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:605281237568:android:a7ee8b17a5ded8cf1cbda5",
+        "android_client_info": {
+          "package_name": "com.fittrack.ufit"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "605281237568-5v0t1n3bp3ksgru7qtro54fhvh1a8561.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fittrack.ufit",
+            "certificate_hash": "5dedd2256edf123f5d7f5a1c4a65c31c34916414"
+          }
+        },
+        {
+          "client_id": "605281237568-8i6i0i7qdaigv9fo2jj3976fabl81tjk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCfh9yMiELigduljPhKj0KqlPsaZc-95UI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "605281237568-8i6i0i7qdaigv9fo2jj3976fabl81tjk.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "605281237568-p2gssum684abbpdbr16818tl6jmqkpga.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.fittrack.fitTrack"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

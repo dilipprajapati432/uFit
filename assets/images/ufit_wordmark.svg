@@ -1,0 +1,31 @@
+<svg viewBox="0 0 480 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1B2C4F"/>
+      <stop offset="100%" stop-color="#0F1930"/>
+    </linearGradient>
+    <linearGradient id="pulse2" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#FF7A54"/>
+      <stop offset="100%" stop-color="#FFC15E"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="480" height="200" rx="40" fill="url(#bg2)"/>
+
+  <!-- icon mark, reused at small scale -->
+  <g transform="translate(30,35) scale(0.253)">
+    <rect width="512" height="512" rx="112" fill="#16223f"/>
+    <path d="M96 300 H166 L192 232 L222 328 L254 300 H304 L370 206"
+          fill="none" stroke="url(#pulse2)" stroke-width="22"
+          stroke-linecap="round" stroke-linejoin="round"/>
+    <polygon points="387,181 381,213 359,198" fill="#FFC15E"/>
+    <circle cx="192" cy="232" r="9" fill="#FFC15E"/>
+    <circle cx="192" cy="232" r="16" fill="none" stroke="#FFC15E" stroke-width="3" opacity="0.45"/>
+  </g>
+
+  <!-- wordmark: the "u" carries the pulse gradient, tying "you" to the energy mark -->
+  <text x="190" y="128" font-family="-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif"
+        font-size="68" font-weight="800" letter-spacing="-1">
+    <tspan fill="url(#pulse2)">u</tspan><tspan fill="#F4F6FB">Fit</tspan>
+  </text>
+</svg>
