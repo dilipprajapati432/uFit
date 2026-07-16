@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide EmailAuthProvider;
@@ -9,6 +8,8 @@ import 'package:uuid/uuid.dart';
 import 'auth_provider.dart';
 import '../models/models.dart';
 import '../services/notification_service.dart';
+import '../services/health_service.dart';
+import '../services/widget_service.dart';
 
 // ─── THEME PROVIDER ──────────────────────────────────────────
 final themeProvider = StateNotifierProvider<ThemeNotifier, bool>((ref) {
@@ -209,21 +210,30 @@ class WaterNotifier extends StateNotifier<List<WaterLog>> {
               l.timestamp.day == today.day).toList()
             ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
           state = todayLogs;
+          _updateWidget();
         });
       }
     }, fireImmediately: true);
+  }
+
+  void _updateWidget() {
+    final user = _ref.read(userProvider);
+    final goal = user?.dailyWaterGoalMl ?? 2500;
+    WidgetService.updateWaterWidget(todayTotalMl, goal);
   }
 
   Future<void> addWaterLog(WaterLog log) async {
     final user = _ref.read(currentFirebaseUserProvider);
     if (user == null) return;
     await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('water_logs').doc(log.id).set(log.toMap());
+    _updateWidget();
   }
 
   Future<void> deleteWaterLog(String id) async {
     final user = _ref.read(currentFirebaseUserProvider);
     if (user == null) return;
     await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('water_logs').doc(id).delete();
+    _updateWidget();
   }
 
   int get todayTotalMl => state.fold(0, (sum, log) => sum + log.amountMl);
@@ -593,10 +603,6 @@ final stepsProvider = StateNotifierProvider<StepsNotifier, List<StepLog>>((ref) 
 class StepsNotifier extends StateNotifier<List<StepLog>> {
   final Ref _ref;
   StreamSubscription? _sub;
-  StreamSubscription<StepCount>? _stepCountStream;
-  StreamSubscription<PedestrianStatus>? _pedestrianStatusStream;
-  int _baseSteps = 0;
-  DateTime? _lastDate;
   int _sensorStepsToday = 0;
   String pedestrianStatus = 'unknown';
 
@@ -620,72 +626,13 @@ class StepsNotifier extends StateNotifier<List<StepLog>> {
       }
     }, fireImmediately: true);
     
-    _initPedometer();
+    _initHealth();
   }
 
-  Future<void> _initPedometer() async {
-    final status = await Permission.activityRecognition.request();
-    if (status.isDenied || status.isPermanentlyDenied) {
-      return;
-    }
-
-    final prefs = await SharedPreferences.getInstance();
-    _baseSteps = prefs.getInt('baseSteps') ?? -1;
-    if (_baseSteps == 0) _baseSteps = -1;
-    
-    final lastDateStr = prefs.getString('lastStepsDate');
-    _lastDate = lastDateStr != null ? DateTime.tryParse(lastDateStr) : null;
-    _sensorStepsToday = prefs.getInt('lastKnownSensorSteps') ?? 0;
-
-    final now = DateTime.now();
-    if (_lastDate == null || _lastDate!.day != now.day || _lastDate!.month != now.month || _lastDate!.year != now.year) {
-      // It's a new day! Save yesterday's steps to Firestore before resetting.
-      if (_lastDate != null && _sensorStepsToday > 0) {
-        final log = StepLog(
-          id: const Uuid().v4(),
-          date: _lastDate!,
-          steps: _sensorStepsToday,
-          caloriesBurned: (_sensorStepsToday * 0.04).toInt(),
-          distanceKm: _sensorStepsToday * 0.000762,
-        );
-        // Fire and forget so we don't block initialization
-        addStepLog(log);
-      }
-      
-      _baseSteps = -1; 
-      _sensorStepsToday = 0;
-      _lastDate = now;
-      await prefs.setString('lastStepsDate', now.toIso8601String());
-      await prefs.setInt('lastKnownSensorSteps', 0);
-    }
-
-    try {
-      _pedestrianStatusStream = Pedometer.pedestrianStatusStream.listen(
-        (PedestrianStatus event) {
-          pedestrianStatus = event.status;
-        },
-        onError: (error) {
-          pedestrianStatus = 'error';
-        },
-      );
-
-      _stepCountStream = Pedometer.stepCountStream.listen(
-        (StepCount event) async {
-          final currentSteps = event.steps;
-          
-          if (_baseSteps == -1 || currentSteps < _baseSteps) {
-            _baseSteps = currentSteps;
-            await prefs.setInt('baseSteps', _baseSteps);
-          }
-          
-          _sensorStepsToday = currentSteps - _baseSteps;
-          await prefs.setInt('lastKnownSensorSteps', _sensorStepsToday);
-          
-          state = [...state]; // Force UI update for live steps
-        },
-        onError: (error) {},
-      );
-    } catch (e) {}
+  Future<void> _initHealth() async {
+    final steps = await HealthService.getTodaySteps();
+    _sensorStepsToday = steps;
+    state = [...state]; // Force UI update
   }
 
   Future<void> addStepLog(StepLog log) async {
@@ -722,8 +669,6 @@ class StepsNotifier extends StateNotifier<List<StepLog>> {
   @override
   void dispose() {
     _sub?.cancel();
-    _stepCountStream?.cancel();
-    _pedestrianStatusStream?.cancel();
     super.dispose();
   }
 }
@@ -762,6 +707,12 @@ class NutritionNotifier extends StateNotifier<List<NutritionLog>> {
     final user = _ref.read(currentFirebaseUserProvider);
     if (user == null) return;
     await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('nutrition_logs').doc(log.id).set(log.toMap());
+  }
+
+  Future<void> updateNutritionLog(NutritionLog log) async {
+    final user = _ref.read(currentFirebaseUserProvider);
+    if (user == null) return;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('nutrition_logs').doc(log.id).update(log.toMap());
   }
 
   Future<void> deleteNutritionLog(String id) async {

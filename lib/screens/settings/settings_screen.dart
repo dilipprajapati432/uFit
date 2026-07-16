@@ -384,8 +384,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            ElevatedButton(onPressed: () { onSave(value); Navigator.pop(context); }, child: const Text('Save')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(onPressed: () { 
+              onSave(value); 
+              Navigator.pop(ctx); 
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Goal updated successfully! 🎉')));
+            }, child: const Text('Save')),
           ],
         ),
       ),
@@ -417,11 +421,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () {
                 if (user != null) { user.targetWeightKg = value; ref.read(userProvider.notifier).saveUser(user); }
-                Navigator.pop(context);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Target weight updated! ⚖️')));
               },
               child: const Text('Save'),
             ),

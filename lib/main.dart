@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'app_router.dart';
 import 'firebase_options.dart';
 import 'providers/app_providers.dart';
@@ -21,6 +22,8 @@ void main() async {
 
   // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  
+  await dotenv.load(fileName: ".env");
 
   // Initialize notifications asynchronously in the background
   NotificationService.init();

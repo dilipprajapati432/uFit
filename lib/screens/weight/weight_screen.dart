@@ -521,7 +521,10 @@ class _LogWeightFormState extends ConsumerState<_LogWeightForm> {
       ref.read(userProvider.notifier).saveUser(user);
     }
 
-    Navigator.pop(context);
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Weight logged! ⚖️')));
+    }
   }
 
   @override

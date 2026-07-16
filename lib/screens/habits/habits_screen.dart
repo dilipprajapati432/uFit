@@ -787,7 +787,10 @@ class _AddHabitFormState extends ConsumerState<_AddHabitForm> {
       debugPrint("ERROR SCHEDULING HABIT REMINDER FROM DIALOG: $e\n$stack");
     }
 
-    if (mounted) Navigator.pop(context);
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Habit created! ✅')));
+    }
   }
 
   @override

@@ -39,7 +39,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   final authNotifier = _AuthStateNotifier(ref);
 
   return GoRouter(
-    initialLocation: '/welcome',
+    initialLocation: '/splash',
     refreshListenable: authNotifier,
     redirect: (context, state) async {
       final authState = ref.read(firebaseAuthProvider);
@@ -52,6 +52,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoggedIn = authState.maybeWhen(data: (u) => u != null, orElse: () => false);
       
       if (!isLoggedIn && !isAuthPage) return '/welcome';
+      if (!isLoggedIn && loc == '/splash') return '/welcome';
       
       if (isLoggedIn && isAuthPage) {
         var user = ref.read(userProvider);

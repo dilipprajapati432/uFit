@@ -8,6 +8,7 @@ import '../../models/models.dart';
 import '../../providers/app_providers.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/confetti_overlay.dart';
 import 'package:ufit/theme/theme_ext.dart';
 
 class WaterScreen extends ConsumerStatefulWidget {
@@ -44,10 +45,14 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
     final progress = (total / goal).clamp(0.0, 1.0);
     // Weekly data computed inline from all logs in the box
     final weeklyData = _computeWeeklyData(logs);
+    final maxWeeklyValue = weeklyData.values.fold<int>(0, (max, v) => v > max ? v : max);
+    final chartMaxY = maxWeeklyValue > goal ? (maxWeeklyValue * 1.2).toDouble() : (goal * 1.2).toDouble();
 
-    return Scaffold(
-      backgroundColor: context.bg,
-      appBar: AppBar(
+    return ConfettiOverlay(
+      isGoalAchieved: total >= goal && goal > 0,
+      child: Scaffold(
+        backgroundColor: context.bg,
+        appBar: AppBar(
         title: Text('Water Tracker'),
         actions: [
           IconButton(
@@ -226,7 +231,7 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
                     child: BarChart(
                       BarChartData(
                         alignment: BarChartAlignment.spaceAround,
-                        maxY: (goal * 1.2).toDouble(),
+                        maxY: chartMaxY,
                         barTouchData: BarTouchData(enabled: false),
                         titlesData: FlTitlesData(
                           show: true,
@@ -334,7 +339,7 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
           ),
         ],
       ),
-    );
+    ));
   }
 
   void _addWater(int ml) {
@@ -371,6 +376,7 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
               if (ml != null && ml > 0) {
                 _addWater(ml);
                 Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Water logged! 💧')));
               } else {
                 ScaffoldMessenger.of(ctx).showSnackBar(
                   const SnackBar(content: Text('Please enter a valid number'), duration: Duration(seconds: 1)),
@@ -408,7 +414,7 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
             ElevatedButton(
               onPressed: () {
                 final user = ref.read(userProvider);
@@ -416,7 +422,8 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
                   user.dailyWaterGoalMl = goal;
                   ref.read(userProvider.notifier).saveUser(user);
                 }
-                Navigator.pop(context);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Water goal updated! 💧')));
               },
               child: Text('Save'),
             ),

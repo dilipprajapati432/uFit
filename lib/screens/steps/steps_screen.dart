@@ -8,6 +8,7 @@ import '../../models/models.dart';
 import '../../providers/app_providers.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/confetti_overlay.dart';
 import 'package:ufit/theme/theme_ext.dart';
 
 class StepsScreen extends ConsumerStatefulWidget {
@@ -41,10 +42,14 @@ class _StepsScreenState extends ConsumerState<StepsScreen> {
     final total = ref.read(stepsProvider.notifier).todayTotalSteps;
     final progress = (total / goal).clamp(0.0, 1.0);
     final weeklyData = _computeWeeklyData(logs);
+    final maxWeeklyValue = weeklyData.values.fold<int>(0, (max, v) => v > max ? v : max);
+    final chartMaxY = maxWeeklyValue > goal ? (maxWeeklyValue * 1.2).toDouble() : (goal * 1.5).toDouble();
 
-    return Scaffold(
-      backgroundColor: context.bg,
-      appBar: AppBar(
+    return ConfettiOverlay(
+      isGoalAchieved: total >= goal && goal > 0,
+      child: Scaffold(
+        backgroundColor: context.bg,
+        appBar: AppBar(
         title: const Text('Steps Tracker'),
         actions: [
           IconButton(
@@ -218,7 +223,7 @@ class _StepsScreenState extends ConsumerState<StepsScreen> {
                     child: BarChart(
                       BarChartData(
                         alignment: BarChartAlignment.spaceAround,
-                        maxY: (goal * 1.5).toDouble(),
+                        maxY: chartMaxY,
                         barTouchData: BarTouchData(enabled: false),
                         titlesData: FlTitlesData(
                           show: true,
@@ -326,7 +331,7 @@ class _StepsScreenState extends ConsumerState<StepsScreen> {
           ),
         ],
       ),
-    );
+    ));
   }
 
   void _addSteps(int steps) {
@@ -401,7 +406,7 @@ class _StepsScreenState extends ConsumerState<StepsScreen> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () {
                 final user = ref.read(userProvider);
@@ -409,7 +414,7 @@ class _StepsScreenState extends ConsumerState<StepsScreen> {
                   user.dailyStepsGoal = goal;
                   ref.read(userProvider.notifier).saveUser(user);
                 }
-                Navigator.pop(context);
+                Navigator.pop(ctx);
               },
               child: const Text('Save'),
             ),

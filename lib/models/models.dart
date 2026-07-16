@@ -15,6 +15,7 @@ class UserModel {
   int? age;
   String? gender;
   String? fitnessGoal; // lose_weight, gain_muscle, maintain, active_lifestyle
+  String? dietaryPreference;
   int dailyWaterGoalMl;
   int dailyStepsGoal;
   int dailyCalorieGoal;
@@ -36,6 +37,7 @@ class UserModel {
     this.age,
     this.gender,
     this.fitnessGoal,
+    this.dietaryPreference,
     this.dailyWaterGoalMl = 2500,
     this.dailyStepsGoal = 10000,
     this.dailyCalorieGoal = 2000,
@@ -59,6 +61,7 @@ class UserModel {
       'age': age,
       'gender': gender,
       'fitnessGoal': fitnessGoal,
+      'dietaryPreference': dietaryPreference,
       'dailyWaterGoalMl': dailyWaterGoalMl,
       'dailyStepsGoal': dailyStepsGoal,
       'dailyCalorieGoal': dailyCalorieGoal,
@@ -83,6 +86,7 @@ class UserModel {
       age: map['age']?.toInt(),
       gender: map['gender'],
       fitnessGoal: map['fitnessGoal'],
+      dietaryPreference: map['dietaryPreference'],
       dailyWaterGoalMl: map['dailyWaterGoalMl']?.toInt() ?? 2500,
       dailyStepsGoal: map['dailyStepsGoal']?.toInt() ?? 10000,
       dailyCalorieGoal: map['dailyCalorieGoal']?.toInt() ?? 2000,

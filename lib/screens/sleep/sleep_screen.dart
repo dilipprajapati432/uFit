@@ -483,7 +483,10 @@ class _LogSleepFormState extends ConsumerState<_LogSleepForm> {
       }
     } catch (_) {}
 
-    if (mounted) Navigator.pop(context);
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sleep logged! 🌙')));
+    }
   }
 }
 

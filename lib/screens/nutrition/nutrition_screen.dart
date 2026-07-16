@@ -6,6 +6,7 @@ import '../../models/models.dart';
 import '../../providers/app_providers.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/confetti_overlay.dart';
 import '../../services/ai_service.dart';
 import 'package:ufit/theme/theme_ext.dart';
 
@@ -35,9 +36,14 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
     final carbsGoal = (calorieGoal * 0.4) / 4;
     final fatGoal = (calorieGoal * 0.3) / 9;
 
-    return Scaffold(
-      backgroundColor: context.bg,
-      appBar: AppBar(
+    // Celebrate if they are within 10% of their calorie goal
+    final isGoalAchieved = totalCalories >= (calorieGoal * 0.9) && totalCalories <= (calorieGoal * 1.1);
+
+    return ConfettiOverlay(
+      isGoalAchieved: isGoalAchieved,
+      child: Scaffold(
+        backgroundColor: context.bg,
+        appBar: AppBar(
         title: const Text('Meals & Nutrition'),
         actions: [
           IconButton(
@@ -116,6 +122,19 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
                 ).animate().fadeIn().scale(begin: const Offset(0.95, 0.95)),
                 const SizedBox(height: 24),
 
+                // AI Auto Plan Button
+                OutlinedButton.icon(
+                  onPressed: () => _autoPlanDay(context, ref, calorieGoal),
+                  icon: const Icon(Icons.auto_awesome),
+                  label: const Text('✨ Auto-Plan My Day'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.purple,
+                    side: const BorderSide(color: Colors.purple),
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
                 // Meal Categories
                 _MealCategory(title: 'Breakfast', icon: '🍳', logs: logs.where((l) => l.mealType == 'breakfast').toList()),
                 _MealCategory(title: 'Lunch', icon: '🥗', logs: logs.where((l) => l.mealType == 'lunch').toList()),
@@ -128,7 +147,7 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
           ),
         ],
       ),
-    );
+    ));
   }
 
   void _showGoalSheet(BuildContext context, int currentGoal) {
@@ -155,7 +174,7 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () {
                 final user = ref.read(userProvider);
@@ -163,7 +182,7 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
                   user.dailyCalorieGoal = goal;
                   ref.read(userProvider.notifier).saveUser(user);
                 }
-                Navigator.pop(context);
+                Navigator.pop(ctx);
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
               child: const Text('Save'),
@@ -172,6 +191,119 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _autoPlanDay(BuildContext context, WidgetRef ref, int targetCalories) async {
+    final user = ref.read(userProvider);
+    String? dietPref = user?.dietaryPreference;
+
+    if (dietPref == null) {
+      // First time setup
+      dietPref = await showModalBottomSheet<String>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) => Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: context.bg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('How do you eat?', style: Theme.of(ctx).textTheme.headlineSmall),
+              const SizedBox(height: 8),
+              Text('Set your dietary preference so the AI can craft the perfect daily meals for you.', style: TextStyle(color: context.textSecondary)),
+              const SizedBox(height: 24),
+              ...['Any', 'Vegetarian', 'Vegan', 'Keto', 'Paleo'].map((pref) => 
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: context.surface,
+                      foregroundColor: context.text,
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                      alignment: Alignment.centerLeft,
+                      elevation: 0,
+                      side: BorderSide(color: context.border),
+                    ),
+                    onPressed: () {
+                      if (user != null) {
+                        user.dietaryPreference = pref;
+                        ref.read(userProvider.notifier).saveUser(user);
+                      }
+                      Navigator.pop(ctx, pref);
+                    },
+                    child: Row(
+                      children: [
+                        Text(pref == 'Any' ? '🍽️' : pref == 'Vegetarian' ? '🥦' : pref == 'Vegan' ? '🌱' : pref == 'Keto' ? '🥑' : '🥩', style: const TextStyle(fontSize: 20)),
+                        const SizedBox(width: 16),
+                        Text(pref, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                      ],
+                    ),
+                  ),
+                )
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      );
+      
+      if (dietPref == null) return; // User dismissed sheet
+    }
+
+    if (!context.mounted) return;
+
+    showDialog(
+      context: context, 
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        backgroundColor: context.surface,
+        content: Row(
+          children: [
+            const CircularProgressIndicator(color: Colors.purple),
+            const SizedBox(width: 20),
+            Text('AI is planning your meals...', style: Theme.of(context).textTheme.bodyMedium),
+          ],
+        )
+      )
+    );
+
+    final plan = await AiService.generateMealPlan(targetCalories, dietaryPreference: dietPref);
+    
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+
+    if (plan != null) {
+      final now = DateTime.now();
+      for (final meal in ['breakfast', 'lunch', 'snack', 'dinner']) {
+        if (plan.containsKey(meal)) {
+          final data = plan[meal];
+          final log = NutritionLog(
+            id: const Uuid().v4(),
+            date: now,
+            mealType: meal,
+            foodName: data['name'] ?? 'Unknown',
+            calories: (data['calories'] as num?)?.toDouble() ?? 0,
+            proteinG: (data['protein'] as num?)?.toDouble(),
+            carbsG: (data['carbs'] as num?)?.toDouble(),
+            fatG: (data['fat'] as num?)?.toDouble(),
+          );
+          ref.read(nutritionProvider.notifier).addNutritionLog(log);
+        }
+      }
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Meal plan added successfully! ✨')));
+      }
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to generate meal plan. Please try again.')));
+      }
+    }
   }
 }
 
@@ -240,17 +372,30 @@ class _MealCategory extends ConsumerWidget {
           ),
           if (logs.isNotEmpty) ...[
             const Divider(height: 1),
-            ...logs.map((log) => ListTile(
-              title: Text(log.foodName, style: Theme.of(context).textTheme.bodyMedium),
-              subtitle: Text(
-                '${log.servingSize.toInt()} ${log.servingUnit} • P:${log.proteinG?.toInt()??0} C:${log.carbsG?.toInt()??0} F:${log.fatG?.toInt()??0}',
-                style: Theme.of(context).textTheme.bodySmall,
+            ...logs.map((log) => Dismissible(
+              key: Key(log.id),
+              direction: DismissDirection.endToStart,
+              background: Container(
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.only(right: 20),
+                color: Colors.redAccent.withOpacity(0.8),
+                child: const Icon(Icons.delete_outline, color: Colors.white),
               ),
-              trailing: Text('${log.calories.toInt()} kcal', style: Theme.of(context).textTheme.bodyMedium),
-              onLongPress: () {
-                // Delete
+              onDismissed: (_) {
                 ref.read(nutritionProvider.notifier).deleteNutritionLog(log.id);
               },
+              child: ListTile(
+                title: Text(log.foodName, style: Theme.of(context).textTheme.bodyMedium),
+                subtitle: Text(
+                  '${log.servingSize.toInt()} ${log.servingUnit} • P:${log.proteinG?.toInt()??0} C:${log.carbsG?.toInt()??0} F:${log.fatG?.toInt()??0}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                trailing: Text('${log.calories.toInt()} kcal', style: Theme.of(context).textTheme.bodyMedium),
+                onTap: () => _showAddMealSheet(context, ref, title.toLowerCase(), existingLog: log),
+                onLongPress: () {
+                  ref.read(nutritionProvider.notifier).deleteNutritionLog(log.id);
+                },
+              ),
             )),
           ]
         ],
@@ -258,12 +403,12 @@ class _MealCategory extends ConsumerWidget {
     ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1);
   }
 
-  void _showAddMealSheet(BuildContext context, WidgetRef ref, String mealType) {
-    final nameCtrl = TextEditingController();
-    final calCtrl = TextEditingController();
-    final pCtrl = TextEditingController();
-    final cCtrl = TextEditingController();
-    final fCtrl = TextEditingController();
+  void _showAddMealSheet(BuildContext context, WidgetRef ref, String mealType, {NutritionLog? existingLog}) {
+    final nameCtrl = TextEditingController(text: existingLog?.foodName ?? '');
+    final calCtrl = TextEditingController(text: existingLog?.calories.toInt().toString() ?? '');
+    final pCtrl = TextEditingController(text: existingLog?.proteinG?.toInt().toString() ?? '');
+    final cCtrl = TextEditingController(text: existingLog?.carbsG?.toInt().toString() ?? '');
+    final fCtrl = TextEditingController(text: existingLog?.fatG?.toInt().toString() ?? '');
     bool isLoading = false;
 
     showModalBottomSheet(
@@ -286,7 +431,7 @@ class _MealCategory extends ConsumerWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Log $title', style: Theme.of(context).textTheme.headlineSmall),
+                    Text(existingLog != null ? 'Edit Meal' : 'Log $title', style: Theme.of(context).textTheme.headlineSmall),
                     if (isLoading)
                       const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))
                     else
@@ -347,8 +492,8 @@ class _MealCategory extends ConsumerWidget {
                   onPressed: () {
                     if (nameCtrl.text.isNotEmpty && calCtrl.text.isNotEmpty) {
                       final log = NutritionLog(
-                        id: const Uuid().v4(),
-                        date: DateTime.now(),
+                        id: existingLog?.id ?? const Uuid().v4(),
+                        date: existingLog?.date ?? DateTime.now(),
                         mealType: mealType == 'snacks' ? 'snack' : mealType,
                         foodName: nameCtrl.text,
                         calories: double.tryParse(calCtrl.text) ?? 0,
@@ -356,11 +501,16 @@ class _MealCategory extends ConsumerWidget {
                         carbsG: double.tryParse(cCtrl.text),
                         fatG: double.tryParse(fCtrl.text),
                       );
-                      ref.read(nutritionProvider.notifier).addNutritionLog(log);
+                      if (existingLog != null) {
+                        ref.read(nutritionProvider.notifier).updateNutritionLog(log);
+                      } else {
+                        ref.read(nutritionProvider.notifier).addNutritionLog(log);
+                      }
                       Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Meal logged successfully! 🍽️')));
                     }
                   },
-                  child: const Text('Add Food'),
+                  child: Text(existingLog != null ? 'Save Changes' : 'Add Food'),
                 ),
               ],
             ),

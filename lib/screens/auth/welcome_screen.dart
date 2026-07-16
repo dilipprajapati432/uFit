@@ -33,23 +33,10 @@ class WelcomeScreen extends ConsumerWidget {
               const Spacer(),
 
               // Logo + branding
-              Container(
+              Image.asset(
+                'assets/images/ufit_icon_new.png',
                 width: 100,
                 height: 100,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(28),
-                  image: const DecorationImage(
-                    image: AssetImage('assets/images/ufit_icon_new.png'),
-                    fit: BoxFit.cover,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withOpacity(0.4),
-                      blurRadius: 30,
-                      offset: const Offset(0, 12),
-                    )
-                  ],
-                ),
               ).animate().scale(duration: 700.ms, curve: Curves.elasticOut),
               SizedBox(height: 24),
 
