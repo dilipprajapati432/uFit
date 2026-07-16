@@ -11,6 +11,8 @@ import '../../providers/app_providers.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
 import 'package:ufit/theme/theme_ext.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/notification_service.dart';
 
 class HabitsScreen extends ConsumerStatefulWidget {
   const HabitsScreen({super.key});
@@ -110,6 +112,7 @@ class _TodayTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final allHabits = ref.watch(habitsProvider);
+    final isPremium = ref.watch(premiumProvider);
     final weekday = selectedDay.weekday;
     final todayHabits = allHabits.where((h) => h.weekDays.contains(weekday)).toList();
     final completed = todayHabits.where((h) => h.isCompletedOn(selectedDay)).length;
@@ -208,7 +211,30 @@ class _TodayTab extends ConsumerWidget {
                     title: 'No habits today',
                     subtitle: 'Add your first habit to start building positive routines',
                     actionLabel: 'Add a Habit',
-                    onAction: () {},
+                    onAction: () {
+                      if (!isPremium && allHabits.length >= 3) {
+                        showDialog(
+                          context: context,
+                          builder: (dialogCtx) => AlertDialog(
+                            backgroundColor: context.surface,
+                            title: const Text('Free Limit Reached'),
+                            content: const Text('You can track up to 3 habits for free. Upgrade to Pro for unlimited habits!'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('Later')),
+                              ElevatedButton(
+                                onPressed: () { 
+                                  Navigator.pop(dialogCtx);
+                                  context.push('/premium'); 
+                                },
+                                child: const Text('Upgrade to Pro'),
+                              ),
+                            ],
+                          ),
+                        );
+                      } else {
+                        showAppBottomSheet(context: context, child: const _AddHabitForm());
+                      }
+                    },
                   ),
                 )
               : SliverList(
@@ -245,10 +271,35 @@ class _AllHabitsTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final habits = ref.watch(habitsProvider);
     if (habits.isEmpty) {
-      return const EmptyState(
+      return EmptyState(
         emoji: '🎯',
         title: 'No habits yet',
         subtitle: 'Create habits to track your daily routines and build a healthier life',
+        actionLabel: 'Add a Habit',
+        onAction: () {
+          if (!isPremium && habits.length >= 3) {
+            showDialog(
+              context: context,
+              builder: (dialogCtx) => AlertDialog(
+                backgroundColor: context.surface,
+                title: const Text('Free Limit Reached'),
+                content: const Text('You can track up to 3 habits for free. Upgrade to Pro for unlimited habits!'),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('Later')),
+                  ElevatedButton(
+                    onPressed: () { 
+                      Navigator.pop(dialogCtx);
+                      context.push('/premium'); 
+                    },
+                    child: const Text('Upgrade to Pro'),
+                  ),
+                ],
+              ),
+            );
+          } else {
+            showAppBottomSheet(context: context, child: const _AddHabitForm());
+          }
+        },
       );
     }
 
@@ -411,7 +462,7 @@ class _HabitCard extends StatelessWidget {
                     ),
                   ),
                   child: isCompleted
-                      ? Icon(Icons.check, size: 18, color: Colors.white)
+                      ? const Icon(Icons.check, size: 18, color: Colors.white)
                       : null,
                 ),
               )
@@ -427,6 +478,45 @@ class _HabitCard extends StatelessWidget {
                   style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
                 ),
               ),
+
+            // direct Edit/Delete menu button
+            const SizedBox(width: 4),
+            PopupMenuButton<String>(
+              icon: Icon(Icons.more_vert_rounded, color: context.textSecondary, size: 20),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 100),
+              color: context.card,
+              surfaceTintColor: Colors.transparent,
+              onSelected: (val) {
+                if (val == 'edit') {
+                  onEdit();
+                } else if (val == 'delete') {
+                  onDelete();
+                }
+              },
+              itemBuilder: (ctx) => [
+                PopupMenuItem(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit_rounded, size: 16, color: context.textSecondary),
+                      const SizedBox(width: 8),
+                      Text('Edit', style: TextStyle(color: context.text, fontSize: 13)),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_rounded, size: 16, color: AppColors.error),
+                      const SizedBox(width: 8),
+                      Text('Delete', style: const TextStyle(color: AppColors.error, fontSize: 13)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -450,6 +540,15 @@ class _AddHabitFormState extends ConsumerState<_AddHabitForm> {
   String _frequency = 'daily';
   List<int> _weekDays = [1, 2, 3, 4, 5, 6, 7];
   String _category = 'health';
+  bool _reminderEnabled = false;
+  TimeOfDay _reminderTime = const TimeOfDay(hour: 8, minute: 0);
+
+  String _formatTime(TimeOfDay time) {
+    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    final hourStr = time.hourOfPeriod == 0 ? '12' : time.hourOfPeriod.toString();
+    final minStr = time.minute.toString().padLeft(2, '0');
+    return '$hourStr:$minStr $period';
+  }
 
   final _icons = ['⭐', '💪', '🧘', '📚', '💧', '🏃', '🥗', '😴', '🎯', '🧠', '❤️', '🌿', '☀️', '🎵', '✍️', '🏊'];
 
@@ -465,6 +564,13 @@ class _AddHabitFormState extends ConsumerState<_AddHabitForm> {
       _frequency = h.frequency;
       _weekDays = List.from(h.weekDays);
       _category = h.category;
+      _reminderEnabled = h.reminderEnabled;
+      if (h.reminderTime != null) {
+        try {
+          final parts = h.reminderTime!.split(':');
+          _reminderTime = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+        } catch (_) {}
+      }
     }
   }
 
@@ -573,6 +679,57 @@ class _AddHabitFormState extends ConsumerState<_AddHabitForm> {
                   ))
               .toList(),
         ),
+        const SizedBox(height: 20),
+
+        // Habit Reminder
+        Text('Reminder', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              _reminderEnabled
+                  ? 'Remind me at ${_formatTime(_reminderTime)}'
+                  : 'No reminder set',
+              style: TextStyle(color: context.textSecondary, fontSize: 13),
+            ),
+            Switch(
+              value: _reminderEnabled,
+              onChanged: (v) async {
+                if (v) {
+                  final t = await showTimePicker(
+                    context: context,
+                    initialTime: _reminderTime,
+                    builder: (context, child) {
+                      return Theme(
+                        data: Theme.of(context).copyWith(
+                          colorScheme: ColorScheme.dark(
+                            primary: AppColors.primary,
+                            onPrimary: Colors.white,
+                            surface: context.card,
+                            onSurface: context.text,
+                          ),
+                        ),
+                        child: child!,
+                      );
+                    },
+                  );
+                  if (t != null) {
+                    setState(() {
+                      _reminderTime = t;
+                      _reminderEnabled = true;
+                    });
+                  } else {
+                    setState(() => _reminderEnabled = false);
+                  }
+                } else {
+                  setState(() => _reminderEnabled = false);
+                }
+              },
+              activeColor: AppColors.primary,
+            ),
+          ],
+        ),
         SizedBox(height: 28),
 
         SizedBox(
@@ -587,8 +744,10 @@ class _AddHabitFormState extends ConsumerState<_AddHabitForm> {
     );
   }
 
-  void _save() {
+  void _save() async {
     if (_nameCtrl.text.trim().isEmpty) return;
+    final timeStr = '${_reminderTime.hour.toString().padLeft(2, '0')}:${_reminderTime.minute.toString().padLeft(2, '0')}';
+
     final habit = Habit(
       id: widget.existingHabit?.id ?? const Uuid().v4(),
       name: _nameCtrl.text.trim(),
@@ -599,9 +758,36 @@ class _AddHabitFormState extends ConsumerState<_AddHabitForm> {
       weekDays: _weekDays,
       createdAt: widget.existingHabit?.createdAt ?? DateTime.now(),
       category: _category,
+      reminderEnabled: _reminderEnabled,
+      reminderTime: _reminderEnabled ? timeStr : null,
     );
+
+    // Save habit locally
     ref.read(habitsProvider.notifier).addHabit(habit);
-    Navigator.pop(context);
+
+    // Sync notification reminders based on global user settings
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final globalOn = prefs.getBool('habit_reminders_on') ?? false;
+      debugPrint("HABIT REMINDER SAVE DIALOG: reminderEnabled=$_reminderEnabled, globalOn=$globalOn");
+
+      // Clean up previous notification registration to prevent multiple active alarms
+      await NotificationService.cancelHabitReminders(habit.id.hashCode);
+
+      if (_reminderEnabled && globalOn) {
+        await NotificationService.scheduleHabitReminder(
+          id: habit.id.hashCode,
+          habitName: habit.name,
+          time: timeStr,
+          weekDays: habit.weekDays,
+        );
+        debugPrint("HABIT REMINDER SUCCESSFULLY SCHEDULED");
+      }
+    } catch (e, stack) {
+      debugPrint("ERROR SCHEDULING HABIT REMINDER FROM DIALOG: $e\n$stack");
+    }
+
+    if (mounted) Navigator.pop(context);
   }
 
   @override

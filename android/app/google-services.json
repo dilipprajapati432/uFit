@@ -39,10 +39,10 @@
               "client_type": 3
             },
             {
-              "client_id": "605281237568-p2gssum684abbpdbr16818tl6jmqkpga.apps.googleusercontent.com",
+              "client_id": "605281237568-24cba3442ubbjq08snv7qp6vpquobqhi.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.fittrack.fitTrack"
+                "bundle_id": "com.fittrack.ufit"
               }
             }
           ]

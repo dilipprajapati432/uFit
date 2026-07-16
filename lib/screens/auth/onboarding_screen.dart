@@ -27,6 +27,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   String _gender = 'male';
   String _goal = 'maintain';
 
+  @override
+  void initState() {
+    super.initState();
+    // Pre-populate name from Google/Firebase if available
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    if (firebaseUser != null && firebaseUser.displayName != null) {
+      _nameController.text = firebaseUser.displayName!;
+    }
+  }
+
   final _pages = [
     _OnboardingPage(
       emoji: '🏋️',
@@ -352,6 +362,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       id: firebaseUser?.uid ?? const Uuid().v4(),
       name: name,
       email: firebaseUser?.email ?? '',
+      photoUrl: firebaseUser?.photoURL,
       createdAt: DateTime.now(),
       heightCm: _height,
       weightKg: _weight,

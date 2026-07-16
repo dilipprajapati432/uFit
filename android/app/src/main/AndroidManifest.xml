@@ -39,11 +39,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Razorpay -->
-        <activity
-            android:name="com.razorpay.CheckoutActivity"
-            android:theme="@style/CheckoutTheme"
-            android:exported="false"/>
+
 
         <!-- Notification boot receiver -->
         <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
@@ -60,11 +56,4 @@
 
         <meta-data android:name="flutterEmbedding" android:value="2"/>
     </application>
-
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.VIEW"/>
-            <data android:scheme="upi"/>
-        </intent>
-    </queries>
 </manifest>

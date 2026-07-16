@@ -1,0 +1,372 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
+import '../../models/models.dart';
+import '../../providers/app_providers.dart';
+import '../../theme/app_theme.dart';
+import '../../widgets/common_widgets.dart';
+import '../../services/ai_service.dart';
+import 'package:ufit/theme/theme_ext.dart';
+
+class NutritionScreen extends ConsumerStatefulWidget {
+  const NutritionScreen({super.key});
+
+  @override
+  ConsumerState<NutritionScreen> createState() => _NutritionScreenState();
+}
+
+class _NutritionScreenState extends ConsumerState<NutritionScreen> {
+  @override
+  Widget build(BuildContext context) {
+    final logs = ref.watch(nutritionProvider);
+    final user = ref.watch(userProvider);
+    
+    final calorieGoal = user?.dailyCalorieGoal ?? 2000;
+    final totalCalories = ref.read(nutritionProvider.notifier).todayTotalCalories;
+    final progress = (totalCalories / calorieGoal).clamp(0.0, 1.0);
+
+    final totalProtein = ref.read(nutritionProvider.notifier).todayTotalProtein;
+    final totalCarbs = ref.read(nutritionProvider.notifier).todayTotalCarbs;
+    final totalFat = ref.read(nutritionProvider.notifier).todayTotalFat;
+
+    // Approximate macros goal based on 30% protein, 40% carbs, 30% fat
+    final proteinGoal = (calorieGoal * 0.3) / 4;
+    final carbsGoal = (calorieGoal * 0.4) / 4;
+    final fatGoal = (calorieGoal * 0.3) / 9;
+
+    return Scaffold(
+      backgroundColor: context.bg,
+      appBar: AppBar(
+        title: const Text('Meals & Nutrition'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_rounded),
+            onPressed: () => _showGoalSheet(context, calorieGoal),
+          ),
+        ],
+      ),
+      body: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                const SizedBox(height: 8),
+
+                // Main progress card
+                GradientCard(
+                  gradient: const LinearGradient(
+                    colors: [Colors.orange, Colors.deepOrange],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          CircularProgressWidget(
+                            progress: progress,
+                            size: 100,
+                            color: Colors.white,
+                            strokeWidth: 8,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '${totalCalories.toInt()}',
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18),
+                                ),
+                                const Text('kcal', style: TextStyle(color: Colors.white70, fontSize: 10)),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 20),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Daily Budget',
+                                  style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  totalCalories >= calorieGoal
+                                      ? 'Over goal by ${(totalCalories - calorieGoal).toInt()} kcal'
+                                      : '${(calorieGoal - totalCalories).toInt()} kcal remaining',
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18),
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    _MacroSummary(label: 'Protein', value: totalProtein, goal: proteinGoal),
+                                    _MacroSummary(label: 'Carbs', value: totalCarbs, goal: carbsGoal),
+                                    _MacroSummary(label: 'Fat', value: totalFat, goal: fatGoal),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ).animate().fadeIn().scale(begin: const Offset(0.95, 0.95)),
+                const SizedBox(height: 24),
+
+                // Meal Categories
+                _MealCategory(title: 'Breakfast', icon: '🍳', logs: logs.where((l) => l.mealType == 'breakfast').toList()),
+                _MealCategory(title: 'Lunch', icon: '🥗', logs: logs.where((l) => l.mealType == 'lunch').toList()),
+                _MealCategory(title: 'Snacks', icon: '🍎', logs: logs.where((l) => l.mealType == 'snack').toList()),
+                _MealCategory(title: 'Dinner', icon: '🍝', logs: logs.where((l) => l.mealType == 'dinner').toList()),
+
+                const SizedBox(height: 80),
+              ]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showGoalSheet(BuildContext context, int currentGoal) {
+    int goal = currentGoal;
+    showDialog(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          backgroundColor: context.surface,
+          title: const Text('Daily Calorie Goal'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('$goal kcal', style: Theme.of(context).textTheme.displaySmall?.copyWith(color: Colors.orange)),
+              Slider(
+                value: goal.toDouble(),
+                min: 1200,
+                max: 5000,
+                divisions: 38,
+                activeColor: Colors.orange,
+                inactiveColor: context.border,
+                onChanged: (v) => setState(() => goal = v.toInt()),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                final user = ref.read(userProvider);
+                if (user != null) {
+                  user.dailyCalorieGoal = goal;
+                  ref.read(userProvider.notifier).saveUser(user);
+                }
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MacroSummary extends StatelessWidget {
+  final String label;
+  final double value;
+  final double goal;
+
+  const _MacroSummary({required this.label, required this.value, required this.goal});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10)),
+        Text('${value.toInt()}/${goal.toInt()}g', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+}
+
+class _MealCategory extends ConsumerWidget {
+  final String title;
+  final String icon;
+  final List<NutritionLog> logs;
+
+  const _MealCategory({required this.title, required this.icon, required this.logs});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final totalCals = logs.fold(0.0, (sum, log) => sum + log.calories);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: context.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.border),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Text(icon, style: const TextStyle(fontSize: 24)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Text(
+                  '${totalCals.toInt()} kcal',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(color: context.textSecondary),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.add_circle_rounded, color: Colors.orange),
+                  onPressed: () => _showAddMealSheet(context, ref, title.toLowerCase()),
+                ),
+              ],
+            ),
+          ),
+          if (logs.isNotEmpty) ...[
+            const Divider(height: 1),
+            ...logs.map((log) => ListTile(
+              title: Text(log.foodName, style: Theme.of(context).textTheme.bodyMedium),
+              subtitle: Text(
+                '${log.servingSize.toInt()} ${log.servingUnit} • P:${log.proteinG?.toInt()??0} C:${log.carbsG?.toInt()??0} F:${log.fatG?.toInt()??0}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              trailing: Text('${log.calories.toInt()} kcal', style: Theme.of(context).textTheme.bodyMedium),
+              onLongPress: () {
+                // Delete
+                ref.read(nutritionProvider.notifier).deleteNutritionLog(log.id);
+              },
+            )),
+          ]
+        ],
+      ),
+    ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1);
+  }
+
+  void _showAddMealSheet(BuildContext context, WidgetRef ref, String mealType) {
+    final nameCtrl = TextEditingController();
+    final calCtrl = TextEditingController();
+    final pCtrl = TextEditingController();
+    final cCtrl = TextEditingController();
+    final fCtrl = TextEditingController();
+    bool isLoading = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: context.bg,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Log $title', style: Theme.of(context).textTheme.headlineSmall),
+                    if (isLoading)
+                      const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                    else
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.purple.withOpacity(0.1),
+                          foregroundColor: Colors.purple,
+                          elevation: 0,
+                        ),
+                        icon: const Icon(Icons.auto_awesome, size: 16),
+                        label: const Text('AI Auto-Fill'),
+                        onPressed: () async {
+                          if (nameCtrl.text.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a food name first!')));
+                            return;
+                          }
+                          setState(() => isLoading = true);
+                          final data = await AiService.estimateNutrition(nameCtrl.text);
+                          setState(() => isLoading = false);
+                          
+                          if (data != null) {
+                            calCtrl.text = data['calories']?.toString() ?? '';
+                            pCtrl.text = data['protein']?.toString() ?? '';
+                            cCtrl.text = data['carbs']?.toString() ?? '';
+                            fCtrl.text = data['fat']?.toString() ?? '';
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('AI failed to estimate. Try again!')));
+                          }
+                        },
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(labelText: 'Food Name (e.g. 1 bowl of rice and dal)'),
+                  autofocus: true,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: calCtrl,
+                  decoration: const InputDecoration(labelText: 'Calories (kcal)'),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(child: TextField(controller: pCtrl, decoration: const InputDecoration(labelText: 'Protein (g)'), keyboardType: TextInputType.number)),
+                    const SizedBox(width: 8),
+                    Expanded(child: TextField(controller: cCtrl, decoration: const InputDecoration(labelText: 'Carbs (g)'), keyboardType: TextInputType.number)),
+                    const SizedBox(width: 8),
+                    Expanded(child: TextField(controller: fCtrl, decoration: const InputDecoration(labelText: 'Fat (g)'), keyboardType: TextInputType.number)),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16)),
+                  onPressed: () {
+                    if (nameCtrl.text.isNotEmpty && calCtrl.text.isNotEmpty) {
+                      final log = NutritionLog(
+                        id: const Uuid().v4(),
+                        date: DateTime.now(),
+                        mealType: mealType == 'snacks' ? 'snack' : mealType,
+                        foodName: nameCtrl.text,
+                        calories: double.tryParse(calCtrl.text) ?? 0,
+                        proteinG: double.tryParse(pCtrl.text),
+                        carbsG: double.tryParse(cCtrl.text),
+                        fatG: double.tryParse(fCtrl.text),
+                      );
+                      ref.read(nutritionProvider.notifier).addNutritionLog(log);
+                      Navigator.pop(ctx);
+                    }
+                  },
+                  child: const Text('Add Food'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

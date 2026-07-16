@@ -219,11 +219,14 @@ class WeightScreen extends ConsumerWidget {
             ),
           ),
           if (logs.isEmpty)
-            const SliverFillRemaining(
-              child: EmptyState(
-                emoji: '⚖️',
-                title: 'No weight logs yet',
-                subtitle: 'Start tracking your weight to see your progress over time',
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: EmptyState(
+                  emoji: '⚖️',
+                  title: 'No weight logs yet',
+                  subtitle: 'Start tracking your weight to see your progress over time',
+                ),
               ),
             )
           else

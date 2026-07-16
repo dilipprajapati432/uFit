@@ -1,16 +1,28 @@
-// lib/screens/auth/welcome_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import 'package:ufit/theme/theme_ext.dart';
 
-class WelcomeScreen extends StatelessWidget {
+class WelcomeScreen extends ConsumerWidget {
   const WelcomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(firebaseAuthProvider);
+
+    // Show a blank black screen while Firebase Auth resolves.
+    // This prevents the Welcome Screen layout from flashing on app startup for logged-in users.
+    if (authState.isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: SizedBox.shrink(),
+      );
+    }
+
     return Scaffold(
       backgroundColor: context.bg,
       body: SafeArea(
@@ -25,19 +37,32 @@ class WelcomeScreen extends StatelessWidget {
                 width: 100,
                 height: 100,
                 decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
                   borderRadius: BorderRadius.circular(28),
-                  boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.4), blurRadius: 30, offset: const Offset(0, 12))],
+                  image: const DecorationImage(
+                    image: AssetImage('assets/images/ufit_icon_new.png'),
+                    fit: BoxFit.cover,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.4),
+                      blurRadius: 30,
+                      offset: const Offset(0, 12),
+                    )
+                  ],
                 ),
-                child: Center(child: Text('💪', style: TextStyle(fontSize: 48))),
               ).animate().scale(duration: 700.ms, curve: Curves.elasticOut),
               SizedBox(height: 24),
 
-              Text(
-                'uFit',
-                style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -2,
+              RichText(
+                text: TextSpan(
+                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -2,
+                  ),
+                  children: const [
+                    TextSpan(text: 'u', style: TextStyle(color: AppColors.accentOrange)),
+                    TextSpan(text: 'Fit'),
+                  ],
                 ),
               ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.3),
               SizedBox(height: 8),
@@ -71,7 +96,7 @@ class WelcomeScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: () => context.go('/signup'),
+                  onPressed: () => context.push('/signup'),
                   style: ElevatedButton.styleFrom(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
@@ -87,7 +112,7 @@ class WelcomeScreen extends StatelessWidget {
                 child: OutlinedButton(
                   onPressed: () async {
                     try {
-                      await AuthService.signInWithGoogle();
+                      await AuthService.signInWithGoogle(isSignUp: true);
                     } catch (_) {}
                   },
                   style: OutlinedButton.styleFrom(
@@ -111,7 +136,7 @@ class WelcomeScreen extends StatelessWidget {
                 children: [
                   Text('Already have an account? ', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.textSecondary)),
                   GestureDetector(
-                    onTap: () => context.go('/login'),
+                    onTap: () => context.push('/login'),
                     child: Text('Sign In', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
                   ),
                 ],

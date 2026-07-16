@@ -23,7 +23,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _confirmCtrl = TextEditingController();
   bool _obscure = true;
   bool _obscureConfirm = true;
-  bool _isLoading = false;
+  bool _isEmailLoading = false;
+  bool _isGoogleLoading = false;
   String? _error;
   bool _agreeToTerms = false;
 
@@ -39,20 +40,63 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(height: 20),
+                SizedBox(height: 8),
+
+                // Back button
                 IconButton(
-                  onPressed: () => context.pop(),
+                  onPressed: () => context.canPop() ? context.pop() : context.go('/welcome'),
                   icon: Icon(Icons.arrow_back_rounded),
                   style: IconButton.styleFrom(backgroundColor: context.card, padding: EdgeInsets.all(10)),
                 ).animate().fadeIn(),
-                SizedBox(height: 32),
+                SizedBox(height: 4),
 
-                Text('Create account', style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800))
-                    .animate().fadeIn(delay: 100.ms).slideX(begin: -0.2),
+                // Branded Header (Logo + App Name)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.asset(
+                        'assets/images/ufit_icon_new.png',
+                        width: 48,
+                        height: 48,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    RichText(
+                      text: TextSpan(
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -1.5,
+                          color: context.text,
+                        ),
+                        children: const [
+                          TextSpan(text: 'u', style: TextStyle(color: AppColors.accentOrange)),
+                          TextSpan(text: 'Fit'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ).animate().fadeIn(delay: 50.ms),
+                const SizedBox(height: 8),
+
+                Center(
+                  child: Text(
+                    'Create account',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.2),
                 SizedBox(height: 8),
-                Text('Start your health journey today', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: context.textSecondary))
-                    .animate().fadeIn(delay: 150.ms),
-                SizedBox(height: 32),
+                Center(
+                  child: Text(
+                    'Start your health journey today',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: context.textSecondary),
+                  ),
+                ).animate().fadeIn(delay: 150.ms),
+                SizedBox(height: 24),
 
                 // Error banner
                 if (_error != null)
@@ -109,7 +153,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       onPressed: () => setState(() => _obscure = !_obscure),
                       icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
                     ),
-                    helperText: 'At least 8 characters',
+                    hintText: 'At least 8 characters',
                   ),
                   validator: (v) {
                     if (v == null || v.isEmpty) return 'Password is required';
@@ -171,8 +215,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _signUp,
-                    child: _isLoading
+                    onPressed: (_isEmailLoading || _isGoogleLoading) ? null : _signUp,
+                    child: _isEmailLoading
                         ? SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                         : Text('Create Account', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                   ),
@@ -197,19 +241,25 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   width: double.infinity,
                   height: 56,
                   child: OutlinedButton(
-                    onPressed: _isLoading ? null : _signUpWithGoogle,
+                    onPressed: (_isEmailLoading || _isGoogleLoading) ? null : _signUpWithGoogle,
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: context.border),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('G', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
-                        SizedBox(width: 12),
-                        Text('Continue with Google', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: context.text)),
-                      ],
-                    ),
+                    child: _isGoogleLoading
+                        ? SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(color: context.text, strokeWidth: 2),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('G', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                              SizedBox(width: 12),
+                              Text('Continue with Google', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: context.text)),
+                            ],
+                          ),
                   ),
                 ).animate().fadeIn(delay: 550.ms).slideY(begin: 0.2),
                 SizedBox(height: 32),
@@ -219,7 +269,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   children: [
                     Text('Already have an account? ', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.textSecondary)),
                     GestureDetector(
-                      onTap: () => context.go('/login'),
+                      onTap: () => context.replace('/login'),
                       child: Text('Sign In', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
                     ),
                   ],
@@ -239,7 +289,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       setState(() => _error = 'Please agree to the Terms of Service and Privacy Policy.');
       return;
     }
-    setState(() { _isLoading = true; _error = null; });
+    setState(() { _isEmailLoading = true; _error = null; });
     try {
       await AuthService.signUpWithEmail(
         email: _emailCtrl.text.trim(),
@@ -253,7 +303,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     } catch (e) {
       setState(() => _error = e.toString());
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _isEmailLoading = false);
     }
   }
 
@@ -262,9 +312,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       setState(() => _error = 'Please agree to the Terms of Service and Privacy Policy.');
       return;
     }
-    setState(() { _isLoading = true; _error = null; });
+    setState(() { _isGoogleLoading = true; _error = null; });
     try {
-      final cred = await AuthService.signInWithGoogle();
+      final cred = await AuthService.signInWithGoogle(isSignUp: true);
       if (cred == null) {
         setState(() => _error = 'Google Sign-In was cancelled or failed. Please try again.');
         return;
@@ -281,7 +331,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     } catch (e) {
       setState(() => _error = e.toString());
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _isGoogleLoading = false);
     }
   }
 

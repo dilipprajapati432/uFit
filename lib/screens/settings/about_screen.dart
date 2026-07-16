@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:ufit/theme/app_theme.dart';
 import 'package:ufit/theme/theme_ext.dart';
-import 'package:ufit/widgets/common_widgets.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -19,141 +18,176 @@ class AboutScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.bg,
-      appBar: AppBar(title: const Text('About uFit')),
+      appBar: AppBar(
+        title: const Text('About', style: TextStyle(fontWeight: FontWeight.w600)),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: context.bg,
+        foregroundColor: context.text,
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
-            const SizedBox(height: 20),
-            // App Logo
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: AppColors.primaryGradient,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.3),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
+            const SizedBox(height: 40),
+            
+            // Minimalist Logo
+            Center(
+              child: Image.asset(
+                'assets/images/ufit_wordmark.png',
+                height: 80,
+                fit: BoxFit.contain,
+                errorBuilder: (c, e, s) => const Icon(Icons.fitness_center_rounded, size: 80, color: AppColors.primary),
               ),
-              child: const Text('💪', style: TextStyle(fontSize: 48)),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             
             // App Title & Version
             Text(
               'uFit',
-              style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w900),
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+                color: context.text,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
-              'Version 2.0.0',
-              style: TextStyle(color: context.textSecondary, fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 16),
-            
-            // Description
-            Text(
-              'Your ultimate AI-powered personal fitness companion. Track habits, log water intake, monitor sleep, and achieve your health goals with intelligent insights.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: context.textSecondary, height: 1.6),
-            ),
-            const SizedBox(height: 40),
-            
-            // Developer Info
-            GlassCard(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  const Text('DEVELOPED BY', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.2, color: AppColors.primary)),
-                  const SizedBox(height: 12),
-                  const Text('Dilip Prajapati', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 4),
-                  Text('Made with ❤️ in Flutter', style: TextStyle(color: context.textSecondary, fontSize: 13)),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _SocialIcon(
-                        icon: Icons.code_rounded,
-                        onTap: () => _launchUrl('https://github.com/dilipprajapati432/uFit'),
-                      ),
-                      const SizedBox(width: 16),
-                      _SocialIcon(
-                        icon: Icons.mail_rounded,
-                        onTap: () => _launchUrl('mailto:dilipkohar4320@gmail.com'),
-                      ),
-                    ],
-                  )
-                ],
-              ),
+              'Version 1.0.0',
+              style: TextStyle(color: context.textSecondary, fontSize: 14),
             ),
             const SizedBox(height: 24),
-
-            // Legal Links
-            GlassCard(
-              child: Column(
-                children: [
-                  ListTile(
-                    title: const Text('Terms of Service', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                    trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-                    onTap: () => context.push('/legal-terms'),
-                  ),
-                  Divider(height: 1, color: context.border.withOpacity(0.5)),
-                  ListTile(
-                    title: const Text('Privacy Policy', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                    trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-                    onTap: () => context.push('/legal-privacy'),
-                  ),
-                  Divider(height: 1, color: context.border.withOpacity(0.5)),
-                  ListTile(
-                    title: const Text('Open Source Licenses', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                    trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-                    onTap: () => showLicensePage(
-                      context: context,
-                      applicationName: 'uFit',
-                      applicationVersion: '2.0.0',
-                      applicationIcon: const Padding(
-                        padding: EdgeInsets.all(8.0),
-                        child: Text('💪', style: TextStyle(fontSize: 48)),
-                      ),
-                    ),
-                  ),
-                ],
+            
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32.0),
+              child: Text(
+                'uFit is an intelligent, all-in-one health ecosystem designed to elevate your daily routine. Seamlessly track your workouts, hydrate optimally, monitor sleep cycles, and build lasting habits—all guided by personalized AI coaching tailored specifically to your goals.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: context.textSecondary, fontSize: 14, height: 1.6),
               ),
             ),
             const SizedBox(height: 40),
             
-            Text('© 2024 uFit. All rights reserved.', style: TextStyle(color: context.textMuted, fontSize: 12)),
+            // Edge-to-edge Menu List
+            _buildSection(context, [
+              _ListTile(
+                title: 'Developer',
+                trailingText: 'Dilip Prajapati',
+              ),
+              _ListTile(
+                title: 'Contact Support',
+                trailingIcon: Icons.mail_outline_rounded,
+                onTap: () => _launchUrl('mailto:support.ufit@gmail.com'),
+              ),
+            ]),
+            
+            const SizedBox(height: 24),
+            
+            _buildSection(context, [
+              _ListTile(
+                title: 'Terms of Service',
+                trailingIcon: Icons.chevron_right_rounded,
+                onTap: () => context.push('/legal-terms'),
+              ),
+              _ListTile(
+                title: 'Privacy Policy',
+                trailingIcon: Icons.chevron_right_rounded,
+                onTap: () => context.push('/legal-privacy'),
+              ),
+              _ListTile(
+                title: 'Open Source Licenses',
+                trailingIcon: Icons.chevron_right_rounded,
+                onTap: () => showLicensePage(
+                  context: context,
+                  applicationName: 'uFit',
+                  applicationVersion: '1.0.0',
+                  applicationIcon: Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Image.asset('assets/images/ufit_wordmark.png', height: 80),
+                  ),
+                ),
+              ),
+            ]),
+            
+            const SizedBox(height: 48),
+            Text(
+              'Made with ❤️ for your health',
+              style: TextStyle(color: context.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '© 2024 uFit. All rights reserved.',
+              style: TextStyle(color: context.textMuted, fontSize: 12),
+            ),
             const SizedBox(height: 40),
           ],
         ),
       ),
     );
   }
+
+  Widget _buildSection(BuildContext context, List<Widget> children) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: context.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.border.withOpacity(0.5)),
+      ),
+      child: Column(
+        children: List.generate(children.length, (index) {
+          if (index == children.length - 1) return children[index];
+          return Column(
+            children: [
+              children[index],
+              Divider(height: 1, indent: 16, endIndent: 16, color: context.border.withOpacity(0.3)),
+            ],
+          );
+        }),
+      ),
+    );
+  }
 }
 
-class _SocialIcon extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
+class _ListTile extends StatelessWidget {
+  final String title;
+  final String? trailingText;
+  final IconData? trailingIcon;
+  final VoidCallback? onTap;
 
-  const _SocialIcon({required this.icon, required this.onTap});
+  const _ListTile({
+    required this.title,
+    this.trailingText,
+    this.trailingIcon,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: context.card,
-          shape: BoxShape.circle,
-          border: Border.all(color: context.border),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(fontSize: 16, color: context.text, fontWeight: FontWeight.w400),
+                ),
+              ),
+              if (trailingText != null)
+                Text(
+                  trailingText!,
+                  style: TextStyle(fontSize: 16, color: context.textSecondary),
+                ),
+              if (trailingIcon != null)
+                Icon(trailingIcon, size: 20, color: context.textSecondary),
+            ],
+          ),
         ),
-        child: Icon(icon, color: AppColors.primary, size: 20),
       ),
     );
   }

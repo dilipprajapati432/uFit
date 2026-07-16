@@ -2,14 +2,44 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/services.dart';
 
 class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
 
   static Future<void> init() async {
     tz.initializeTimeZones();
+    try {
+      final String? timeZoneName = await const MethodChannel('ufit/timezone').invokeMethod<String>('getTimeZone');
+      print("TIMEZONE RESOLVED FROM NATIVE: $timeZoneName");
+      if (timeZoneName != null) {
+        var mappedName = timeZoneName.trim();
+        if (mappedName == 'Asia/Calcutta') {
+          mappedName = 'Asia/Kolkata';
+        } else if (mappedName == 'Asia/Katmandu') {
+          mappedName = 'Asia/Kathmandu';
+        }
+        try {
+          tz.setLocalLocation(tz.getLocation(mappedName));
+          print("TIMEZONE SET SUCCESSFULLY TO: ${tz.local.name}");
+        } catch (e) {
+          print("FAILED TO GET LOCATION FOR $mappedName: $e. Trying generic fallback.");
+          tz.setLocalLocation(tz.getLocation('Asia/Kathmandu'));
+          print("TIMEZONE SET TO GENERIC FALLBACK: ${tz.local.name}");
+        }
+      }
+    } catch (e, stack) {
+      print("ERROR INITIALIZING TIMEZONE: $e\n$stack");
+      try {
+        tz.setLocalLocation(tz.getLocation('Asia/Kathmandu'));
+        print("TIMEZONE FALLBACK TO Asia/Kathmandu WORKED");
+      } catch (err) {
+        print("TIMEZONE FALLBACK FAILED: $err");
+      }
+    }
 
-    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const android = AndroidInitializationSettings('@mipmap/launcher_icon');
     const ios = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
@@ -41,52 +71,84 @@ class NotificationService {
     final minute = int.parse(parts[1]);
 
     for (final day in weekDays) {
-      await _plugin.zonedSchedule(
-        id * 10 + day,
-        'Time for your habit!',
-        "Don't break your streak — complete $habitName",
-        _nextInstanceOfDayTime(day, hour, minute),
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            'habit_reminders',
-            'Habit Reminders',
-            channelDescription: 'Daily habit reminders',
-            importance: Importance.high,
-            priority: Priority.high,
-            icon: '@mipmap/ic_launcher',
+      final notificationId = (id & 0x7ffffff) * 10 + day;
+      try {
+        await _plugin.zonedSchedule(
+          notificationId,
+          'Time for your habit!',
+          "Don't break your streak — complete $habitName",
+          _nextInstanceOfDayTime(day, hour, minute),
+          NotificationDetails(
+            android: AndroidNotificationDetails(
+              'habit_reminders',
+              'Habit Reminders',
+              channelDescription: 'Daily habit reminders',
+              importance: Importance.high,
+              priority: Priority.high,
+              icon: '@mipmap/launcher_icon',
+            ),
+            iOS: const DarwinNotificationDetails(categoryIdentifier: 'habit'),
           ),
-          iOS: const DarwinNotificationDetails(categoryIdentifier: 'habit'),
-        ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
-      );
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+          matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+        );
+      } catch (e, stack) {
+        print("ERROR SCHEDULING HABIT REMINDER (ID: $notificationId): $e\n$stack");
+      }
     }
   }
 
   static Future<void> scheduleWaterReminder() async {
-    for (int hour = 8; hour <= 22; hour += 2) {
-      await _plugin.zonedSchedule(
-        1000 + hour,
-        'Hydration Check!',
-        'Have you had your water today? Stay hydrated!',
-        _nextInstanceOfTime(hour, 0),
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'water_reminders',
-            'Water Reminders',
-            channelDescription: 'Hydration reminders',
-            importance: Importance.defaultImportance,
+    await cancelWaterReminders();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final startHour = prefs.getInt('water_start_hour') ?? 8;
+      final startMinute = prefs.getInt('water_start_minute') ?? 0;
+      final endHour = prefs.getInt('water_end_hour') ?? 22;
+      final endMinute = prefs.getInt('water_end_minute') ?? 0;
+      final intervalHours = prefs.getInt('water_interval_hours') ?? 2;
+
+      int startTotalMinutes = startHour * 60 + startMinute;
+      int endTotalMinutes = endHour * 60 + endMinute;
+
+      if (endTotalMinutes <= startTotalMinutes) {
+        endTotalMinutes = 24 * 60 - 1; // Default to end of day if invalid range
+      }
+
+      int currentTotalMinutes = startTotalMinutes;
+      int idOffset = 0;
+
+      while (currentTotalMinutes <= endTotalMinutes && idOffset < 50) {
+        final hour = currentTotalMinutes ~/ 60;
+        final minute = currentTotalMinutes % 60;
+
+        await _plugin.zonedSchedule(
+          1000 + idOffset,
+          'Hydration Check!',
+          'Have you had your water today? Stay hydrated!',
+          _nextInstanceOfTime(hour, minute),
+          const NotificationDetails(
+            android: AndroidNotificationDetails(
+              'water_reminders',
+              'Water Reminders',
+              channelDescription: 'Hydration reminders',
+              importance: Importance.defaultImportance,
+            ),
+            iOS: DarwinNotificationDetails(),
           ),
-          iOS: DarwinNotificationDetails(),
-        ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents: DateTimeComponents.time,
-      );
-    }
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+          matchDateTimeComponents: DateTimeComponents.time,
+        );
+
+        currentTotalMinutes += intervalHours * 60;
+        idOffset++;
+      }
+    } catch (_) {}
   }
 
   static Future<void> scheduleSleepReminder(int hour, int minute) async {
@@ -133,8 +195,18 @@ class NotificationService {
 
   static Future<void> cancelHabitReminders(int habitId) async {
     for (int day = 1; day <= 7; day++) {
-      await _plugin.cancel(habitId * 10 + day);
+      await _plugin.cancel((habitId & 0x7ffffff) * 10 + day);
     }
+  }
+
+  static Future<void> cancelWaterReminders() async {
+    for (int id = 1000; id <= 1050; id++) {
+      await _plugin.cancel(id);
+    }
+  }
+
+  static Future<void> cancelSleepReminder() async {
+    await _plugin.cancel(2000);
   }
 
   static Future<void> cancelAll() async => await _plugin.cancelAll();

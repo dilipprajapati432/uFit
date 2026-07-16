@@ -2,8 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import '../../models/models.dart';
 import '../../providers/app_providers.dart';
 import '../../services/payment_service.dart';
@@ -20,14 +21,23 @@ class PremiumScreen extends ConsumerStatefulWidget {
 class _PremiumScreenState extends ConsumerState<PremiumScreen> {
   String _selectedPlanId = 'ufit_pro_yearly';
   bool _isProcessing = false;
+  List<Package> _products = [];
+  bool _isLoadingProducts = true;
 
   @override
   void initState() {
     super.initState();
-    PaymentService.initRazorpay(
-      onSuccess: _onPaymentSuccess,
-      onFailure: _onPaymentFailure,
-    );
+    _loadProducts();
+  }
+
+  Future<void> _loadProducts() async {
+    final products = await PaymentService.getProducts();
+    if (mounted) {
+      setState(() {
+        _products = products;
+        _isLoadingProducts = false;
+      });
+    }
   }
 
   @override
@@ -65,15 +75,29 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                       width: 90,
                       height: 90,
                       decoration: const BoxDecoration(
-                        gradient: AppColors.primaryGradient,
                         shape: BoxShape.circle,
+                        image: DecorationImage(
+                          image: AssetImage('assets/images/ufit_icon_new.png'),
+                          fit: BoxFit.cover,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 15,
+                            offset: Offset(0, 5),
+                          )
+                        ],
                       ),
-                      child: Center(child: Text('✨', style: TextStyle(fontSize: 40))),
                     ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
                     SizedBox(height: 16),
-                    Text(
-                      'uFit Pro',
-                      style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800),
+                    RichText(
+                      text: TextSpan(
+                        style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800),
+                        children: const [
+                          TextSpan(text: 'u', style: TextStyle(color: AppColors.accentOrange)),
+                          TextSpan(text: 'Fit Pro'),
+                        ],
+                      ),
                     ).animate().fadeIn(delay: 100.ms),
                     SizedBox(height: 6),
                     Text(
@@ -110,14 +134,22 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
               SizedBox(height: 28),
 
               // Plan cards
-              ...SubscriptionPlan.plans.map((plan) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _PlanCard(
-                  plan: plan,
-                  isSelected: _selectedPlanId == plan.id,
-                  onTap: () => setState(() => _selectedPlanId = plan.id),
-                ),
-              )),
+              if (_isLoadingProducts)
+                const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))
+              else
+                ...SubscriptionPlan.plans.map((plan) {
+                  final product = _products.where((p) => p.storeProduct.identifier == plan.id).firstOrNull;
+                  
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _PlanCard(
+                      plan: plan,
+                      isSelected: _selectedPlanId == plan.id,
+                      onTap: () => setState(() => _selectedPlanId = plan.id),
+                      localizedPrice: product?.storeProduct.priceString,
+                    ),
+                  );
+                }),
               SizedBox(height: 20),
 
               // Purchase button
@@ -144,9 +176,7 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
 
               Center(
                 child: Text(
-                  (!kIsWeb && Platform.isIOS)
-                      ? 'Payment will be charged to your Apple ID. Cancel anytime in Settings.'
-                      : 'Secure payment via Razorpay (Cards, UPI, Netbanking, Wallets)',
+                  'Payment will be processed securely via Google Play or App Store. Cancel anytime in subscriptions.',
                   style: TextStyle(color: context.textMuted, fontSize: 11),
                   textAlign: TextAlign.center,
                 ),
@@ -165,6 +195,17 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                 ],
               ),
               SizedBox(height: 20),
+
+              if (kDebugMode)
+                Padding(
+                  padding: const EdgeInsets.only(top: 20),
+                  child: Center(
+                    child: TextButton(
+                      onPressed: () => _onPaymentSuccess('DEV_UNLOCK'),
+                      child: Text('🛠️ Developer Unlock (Debug Only)', style: TextStyle(color: AppColors.accentOrange)),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -194,32 +235,23 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
 
   void _handlePurchase(SubscriptionPlan plan) {
     setState(() => _isProcessing = true);
-
-    if (!kIsWeb && Platform.isAndroid) {
-      // Use Razorpay for Android (lower fees, India-friendly)
-      final user = ref.read(userProvider);
-      PaymentService.openRazorpay(
-        plan: plan,
-        userName: user?.name ?? 'uFit User',
-        userEmail: user?.email ?? '',
-        userPhone: '',
-      );
-    } else {
-      // Use Apple IAP for iOS (mandatory per App Store guidelines)
-      _purchaseViaIAP(plan);
-    }
+    _purchaseViaIAP(plan);
   }
 
   Future<void> _purchaseViaIAP(SubscriptionPlan plan) async {
     final products = await PaymentService.getProducts();
-    final product = products.where((p) => p.id == plan.id).firstOrNull;
+    final product = products.where((p) => p.storeProduct.identifier == plan.id).firstOrNull;
     if (product == null) {
       setState(() => _isProcessing = false);
       _showError('Product not available. Please try again later.');
       return;
     }
-    await PaymentService.purchaseProduct(product);
-    setState(() => _isProcessing = false);
+    bool success = await PaymentService.purchaseProduct(product);
+    if (success) {
+      _onPaymentSuccess(plan.id);
+    } else {
+      _onPaymentFailure('Purchase failed or was canceled.');
+    }
   }
 
   void _onPaymentSuccess(String paymentId) async {
@@ -229,7 +261,7 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
     if (plan.period == 'monthly') expiry = DateTime.now().add(const Duration(days: 31));
     if (plan.period == 'yearly') expiry = DateTime.now().add(const Duration(days: 365));
 
-    await ref.read(userProvider.notifier).setPremium(true, expiry: expiry);
+    await ref.read(userProvider.notifier).setPremium(true, expiry: expiry, plan: plan.id);
 
     if (mounted) {
       showDialog(
@@ -287,7 +319,6 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
 
   @override
   void dispose() {
-    PaymentService.disposeRazorpay();
     super.dispose();
   }
 }
@@ -296,8 +327,9 @@ class _PlanCard extends StatelessWidget {
   final SubscriptionPlan plan;
   final bool isSelected;
   final VoidCallback onTap;
+  final String? localizedPrice;
 
-  const _PlanCard({required this.plan, required this.isSelected, required this.onTap});
+  const _PlanCard({required this.plan, required this.isSelected, required this.onTap, this.localizedPrice});
 
   @override
   Widget build(BuildContext context) {
@@ -341,9 +373,10 @@ class _PlanCard extends StatelessWidget {
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      '₹${plan.priceINR.toStringAsFixed(0)}',
+                      localizedPrice ?? '₹${plan.priceINR.toStringAsFixed(0)}',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: isSelected ? AppColors.primary : null,
                         fontWeight: FontWeight.w800,
@@ -351,7 +384,9 @@ class _PlanCard extends StatelessWidget {
                     ),
                     Text(
                       plan.period == 'lifetime' ? 'one-time' : '/${plan.period == 'monthly' ? 'mo' : 'yr'}',
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: context.textMuted,
+                      ),
                     ),
                   ],
                 ),
@@ -378,4 +413,28 @@ class _PlanCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _DiagonalLinePainter extends CustomPainter {
+  final Color color;
+
+  _DiagonalLinePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+
+    // Draw from bottom-left to top-right (inclined slash)
+    canvas.drawLine(
+      Offset(0, size.height * 0.85),
+      Offset(size.width, size.height * 0.15),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -19,7 +19,13 @@ class MoreScreen extends ConsumerWidget {
     final firebaseUser = ref.watch(currentFirebaseUserProvider);
 
     final modules = [
+      ('⏳', 'Fasting', Colors.teal, '/fasting'),
       ('💧', 'Water', AppColors.waterColor, '/water'),
+      ('🥗', 'Meals', Colors.orange, '/meals'),
+      ('💪', 'Workout', AppColors.workoutColor, '/workout'),
+      ('🌙', 'Sleep', AppColors.sleepColor, '/sleep'),
+      ('✅', 'Habits', AppColors.habitColor, '/habits'),
+      ('🚶', 'Steps', Colors.blueAccent, '/steps'),
       ('⚖️', 'Weight', AppColors.weightColor, '/weight'),
       ('😊', 'Mood', AppColors.moodColor, '/mood'),
       ('👤', 'Profile', AppColors.primary, '/profile'),

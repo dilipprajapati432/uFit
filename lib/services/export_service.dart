@@ -1,6 +1,7 @@
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:csv/csv.dart';
-import 'package:hive/hive.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
@@ -11,17 +12,23 @@ import '../models/models.dart';
 
 class ExportService {
   static Future<void> exportAllData() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw Exception('Not logged in');
+
     final List<XFile> filesToShare = [];
     final dir = await getApplicationDocumentsDirectory();
     final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+    final firestore = FirebaseFirestore.instance;
+    final userDoc = firestore.collection('users').doc(uid);
     
     // 1. Export Habits
-    final habitsBox = Hive.box<Habit>('habits');
-    if (habitsBox.isNotEmpty) {
+    final habitsSnap = await userDoc.collection('habits').get();
+    if (habitsSnap.docs.isNotEmpty) {
+      final habits = habitsSnap.docs.map((doc) => Habit.fromMap(doc.data(), doc.id)).toList();
       final List<List<dynamic>> rows = [
         ['ID', 'Name', 'Category', 'Created At', 'Current Streak', 'Longest Streak', 'Completed Dates Count']
       ];
-      for (final habit in habitsBox.values) {
+      for (final habit in habits) {
         rows.add([
           habit.id,
           habit.name,
@@ -32,19 +39,20 @@ class ExportService {
           habit.completedDates.length,
         ]);
       }
-      final csvData = csv.encode(rows);
+      final csvData = Csv().encode(rows);
       final file = File('${dir.path}/ufit_habits_$timestamp.csv');
       await file.writeAsString(csvData);
       filesToShare.add(XFile(file.path));
     }
 
     // 2. Export Water Logs
-    final waterBox = Hive.box<WaterLog>('water_logs');
-    if (waterBox.isNotEmpty) {
+    final waterSnap = await userDoc.collection('water_logs').get();
+    if (waterSnap.docs.isNotEmpty) {
+      final waterLogs = waterSnap.docs.map((doc) => WaterLog.fromMap(doc.data(), doc.id)).toList();
       final List<List<dynamic>> rows = [
         ['ID', 'Timestamp', 'Amount (ml)', 'Drink Type']
       ];
-      for (final log in waterBox.values) {
+      for (final log in waterLogs) {
         rows.add([
           log.id,
           log.timestamp.toIso8601String(),
@@ -52,19 +60,20 @@ class ExportService {
           log.drinkType,
         ]);
       }
-      final csvData = csv.encode(rows);
+      final csvData = Csv().encode(rows);
       final file = File('${dir.path}/ufit_water_$timestamp.csv');
       await file.writeAsString(csvData);
       filesToShare.add(XFile(file.path));
     }
 
     // 3. Export Workouts
-    final workoutBox = Hive.box<WorkoutSession>('workouts');
-    if (workoutBox.isNotEmpty) {
+    final workoutSnap = await userDoc.collection('workouts').get();
+    if (workoutSnap.docs.isNotEmpty) {
+      final workouts = workoutSnap.docs.map((doc) => WorkoutSession.fromMap(doc.data(), doc.id)).toList();
       final List<List<dynamic>> rows = [
         ['ID', 'Name', 'Type', 'Start Time', 'Duration (min)', 'Calories Burned', 'Rating']
       ];
-      for (final session in workoutBox.values) {
+      for (final session in workouts) {
         rows.add([
           session.id,
           session.name,
@@ -75,19 +84,20 @@ class ExportService {
           session.ratingOutOf5,
         ]);
       }
-      final csvData = csv.encode(rows);
+      final csvData = Csv().encode(rows);
       final file = File('${dir.path}/ufit_workouts_$timestamp.csv');
       await file.writeAsString(csvData);
       filesToShare.add(XFile(file.path));
     }
 
     // 4. Export Weight Logs
-    final weightBox = Hive.box<WeightLog>('weight_logs');
-    if (weightBox.isNotEmpty) {
+    final weightSnap = await userDoc.collection('weight_logs').get();
+    if (weightSnap.docs.isNotEmpty) {
+      final weights = weightSnap.docs.map((doc) => WeightLog.fromMap(doc.data(), doc.id)).toList();
       final List<List<dynamic>> rows = [
         ['ID', 'Date', 'Weight (kg)', 'Body Fat %', 'Muscle Mass (kg)', 'BMI']
       ];
-      for (final log in weightBox.values) {
+      for (final log in weights) {
         rows.add([
           log.id,
           log.date.toIso8601String(),
@@ -97,19 +107,20 @@ class ExportService {
           log.bmi ?? '',
         ]);
       }
-      final csvData = csv.encode(rows);
+      final csvData = Csv().encode(rows);
       final file = File('${dir.path}/ufit_weight_$timestamp.csv');
       await file.writeAsString(csvData);
       filesToShare.add(XFile(file.path));
     }
 
     // 5. Export Sleep Logs
-    final sleepBox = Hive.box<SleepLog>('sleep_logs');
-    if (sleepBox.isNotEmpty) {
+    final sleepSnap = await userDoc.collection('sleep_logs').get();
+    if (sleepSnap.docs.isNotEmpty) {
+      final sleeps = sleepSnap.docs.map((doc) => SleepLog.fromMap(doc.data(), doc.id)).toList();
       final List<List<dynamic>> rows = [
         ['ID', 'Bed Time', 'Wake Time', 'Duration (hours)', 'Quality (1-5)']
       ];
-      for (final log in sleepBox.values) {
+      for (final log in sleeps) {
         rows.add([
           log.id,
           log.bedTime.toIso8601String(),
@@ -118,7 +129,7 @@ class ExportService {
           log.qualityOutOf5,
         ]);
       }
-      final csvData = csv.encode(rows);
+      final csvData = Csv().encode(rows);
       final file = File('${dir.path}/ufit_sleep_$timestamp.csv');
       await file.writeAsString(csvData);
       filesToShare.add(XFile(file.path));
@@ -132,12 +143,22 @@ class ExportService {
   }
 
   static Future<void> exportAllDataAsPDF() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw Exception('Not logged in');
+
+    final firestore = FirebaseFirestore.instance;
+    final userDoc = firestore.collection('users').doc(uid);
+
     final pdf = pw.Document();
     
     // Gather stats
-    final habitsBox = Hive.box<Habit>('habits');
-    final workoutBox = Hive.box<WorkoutSession>('workouts');
-    final weightBox = Hive.box<WeightLog>('weight_logs');
+    final habitsSnap = await userDoc.collection('habits').get();
+    final workoutSnap = await userDoc.collection('workouts').orderBy('startTime', descending: true).get();
+    final weightSnap = await userDoc.collection('weight_logs').orderBy('date', descending: true).get();
+    
+    final habits = habitsSnap.docs.map((doc) => Habit.fromMap(doc.data(), doc.id)).toList();
+    final workouts = workoutSnap.docs.map((doc) => WorkoutSession.fromMap(doc.data(), doc.id)).toList();
+    final weights = weightSnap.docs.map((doc) => WeightLog.fromMap(doc.data(), doc.id)).toList();
     
     pdf.addPage(
       pw.MultiPage(
@@ -153,33 +174,33 @@ class ExportService {
             pw.SizedBox(height: 20),
             
             // Habits Summary
-            pw.Header(level: 1, child: pw.Text('Habits (${habitsBox.length})')),
-            if (habitsBox.isNotEmpty)
+            pw.Header(level: 1, child: pw.Text('Habits (${habits.length})')),
+            if (habits.isNotEmpty)
               pw.TableHelper.fromTextArray(
                 headers: ['Name', 'Category', 'Current Streak', 'Longest'],
-                data: habitsBox.values.map((h) => [h.name, h.category, h.currentStreak.toString(), h.longestStreak.toString()]).toList(),
+                data: habits.map((h) => [h.name, h.category, h.currentStreak.toString(), h.longestStreak.toString()]).toList(),
               )
             else
               pw.Text('No habits tracked yet.'),
             pw.SizedBox(height: 20),
             
             // Workouts Summary
-            pw.Header(level: 1, child: pw.Text('Recent Workouts (${workoutBox.length})')),
-            if (workoutBox.isNotEmpty)
+            pw.Header(level: 1, child: pw.Text('Recent Workouts (${workouts.length})')),
+            if (workouts.isNotEmpty)
               pw.TableHelper.fromTextArray(
                 headers: ['Date', 'Name', 'Duration', 'Cals Burned'],
-                data: workoutBox.values.take(15).map((w) => [DateFormat('MM/dd').format(w.startTime), w.name, '${w.durationMinutes} min', '${w.caloriesBurned ?? 0}']).toList(),
+                data: workouts.take(15).map((w) => [DateFormat('MM/dd').format(w.startTime), w.name, '${w.durationMinutes} min', '${w.caloriesBurned ?? 0}']).toList(),
               )
             else
               pw.Text('No workouts logged yet.'),
             pw.SizedBox(height: 20),
             
             // Weight Logs
-            pw.Header(level: 1, child: pw.Text('Weight History (${weightBox.length})')),
-            if (weightBox.isNotEmpty)
+            pw.Header(level: 1, child: pw.Text('Weight History (${weights.length})')),
+            if (weights.isNotEmpty)
               pw.TableHelper.fromTextArray(
                 headers: ['Date', 'Weight (kg)', 'Body Fat %', 'Chest (cm)'],
-                data: weightBox.values.take(15).map((w) => [DateFormat('MM/dd').format(w.date), w.weightKg.toString(), w.bodyFatPercent?.toString() ?? '-', w.chestCm?.toString() ?? '-']).toList(),
+                data: weights.take(15).map((w) => [DateFormat('MM/dd').format(w.date), w.weightKg.toString(), w.bodyFatPercent?.toString() ?? '-', w.chestCm?.toString() ?? '-']).toList(),
               )
             else
               pw.Text('No weight logs yet.'),

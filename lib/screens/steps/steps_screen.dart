@@ -1,4 +1,4 @@
-// lib/screens/water/water_screen.dart
+// lib/screens/steps/steps_screen.dart
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -10,48 +10,45 @@ import '../../theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
 import 'package:ufit/theme/theme_ext.dart';
 
-class WaterScreen extends ConsumerStatefulWidget {
-  const WaterScreen({super.key});
+class StepsScreen extends ConsumerStatefulWidget {
+  const StepsScreen({super.key});
 
   @override
-  ConsumerState<WaterScreen> createState() => _WaterScreenState();
+  ConsumerState<StepsScreen> createState() => _StepsScreenState();
 }
 
-class _WaterScreenState extends ConsumerState<WaterScreen> {
-  final _quickAmounts = [150, 200, 250, 350, 500];
-  final _drinkTypes = {'💧 Water': 'water', '☕ Coffee': 'coffee', '🍵 Tea': 'tea', '🧃 Juice': 'juice', '🥛 Milk': 'milk'};
-  String _selectedDrink = 'water';
+class _StepsScreenState extends ConsumerState<StepsScreen> {
+  final _quickAmounts = [500, 1000, 2000, 5000];
 
-  Map<DateTime, int> _computeWeeklyData(List<WaterLog> logs) {
+  Map<DateTime, int> _computeWeeklyData(List<StepLog> logs) {
     final result = <DateTime, int>{};
     for (int i = 6; i >= 0; i--) {
       final date = DateTime.now().subtract(Duration(days: i));
       final dayLogs = logs.where((l) =>
-          l.timestamp.year == date.year &&
-          l.timestamp.month == date.month &&
-          l.timestamp.day == date.day);
-      result[date] = dayLogs.fold(0, (s, l) => s + l.amountMl);
+          l.date.year == date.year &&
+          l.date.month == date.month &&
+          l.date.day == date.day);
+      result[date] = dayLogs.fold(0, (s, l) => s + l.steps);
     }
     return result;
   }
 
   @override
   Widget build(BuildContext context) {
-    final logs = ref.watch(waterProvider);
+    final logs = ref.watch(stepsProvider);
     final user = ref.watch(userProvider);
-    final goal = user?.dailyWaterGoalMl ?? 2500;
-    final total = logs.fold<int>(0, (s, l) => s + l.amountMl);
+    final goal = user?.dailyStepsGoal ?? 10000;
+    final total = ref.read(stepsProvider.notifier).todayTotalSteps;
     final progress = (total / goal).clamp(0.0, 1.0);
-    // Weekly data computed inline from all logs in the box
     final weeklyData = _computeWeeklyData(logs);
 
     return Scaffold(
       backgroundColor: context.bg,
       appBar: AppBar(
-        title: Text('Water Tracker'),
+        title: const Text('Steps Tracker'),
         actions: [
           IconButton(
-            icon: Icon(Icons.settings_rounded),
+            icon: const Icon(Icons.settings_rounded),
             onPressed: () => _showGoalSheet(context, goal),
           ),
         ],
@@ -62,13 +59,47 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
 
                 // Main progress card
                 GradientCard(
-                  gradient: AppColors.waterGradient,
+                  gradient: const LinearGradient(
+                    colors: [Colors.blueAccent, Colors.lightBlue],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   child: Column(
                     children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  ref.read(stepsProvider.notifier).pedestrianStatus == 'walking' 
+                                      ? Icons.directions_walk 
+                                      : Icons.accessibility_new,
+                                  color: Colors.white,
+                                  size: 14,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  ref.read(stepsProvider.notifier).pedestrianStatus.toUpperCase(),
+                                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
                       Row(
                         children: [
                           CircularProgressWidget(
@@ -81,39 +112,39 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
                               children: [
                                 Text(
                                   '${(progress * 100).toInt()}%',
-                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18),
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18),
                                 ),
-                                Text('done', style: TextStyle(color: Colors.white70, fontSize: 10)),
+                                const Text('done', style: TextStyle(color: Colors.white70, fontSize: 10)),
                               ],
                             ),
                           ),
-                          SizedBox(width: 20),
+                          const SizedBox(width: 20),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  '${total}ml',
-                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 28),
+                                  '$total steps',
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 24),
                                 ),
                                 Text(
-                                  'of ${goal}ml goal',
-                                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                                  'of $goal steps goal',
+                                  style: const TextStyle(color: Colors.white70, fontSize: 13),
                                 ),
-                                SizedBox(height: 8),
+                                const SizedBox(height: 8),
                                 Text(
                                   total >= goal
                                       ? '🎉 Goal achieved!'
-                                      : '${goal - total}ml remaining',
-                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                                      : '${goal - total} steps remaining',
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                                 ),
                               ],
                             ),
                           ),
                         ],
                       ),
-                      SizedBox(height: 16),
-                      // Wave-like progress bar
+                      const SizedBox(height: 16),
+                      // Progress bar
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: LinearProgressIndicator(
@@ -126,71 +157,32 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
                     ],
                   ),
                 ).animate().fadeIn().scale(begin: const Offset(0.95, 0.95)),
-                SizedBox(height: 20),
-
-                // Drink type selector
-                Text('Drink Type', style: Theme.of(context).textTheme.titleMedium),
-                SizedBox(height: 10),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: _drinkTypes.entries.map((e) {
-                      final isSelected = _selectedDrink == e.value;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: GestureDetector(
-                          onTap: () => setState(() => _selectedDrink = e.value),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: isSelected ? AppColors.waterColor.withOpacity(0.2) : context.card,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: isSelected ? AppColors.waterColor : context.border,
-                                width: isSelected ? 1.5 : 1,
-                              ),
-                            ),
-                            child: Text(
-                              e.key,
-                              style: TextStyle(
-                                color: isSelected ? AppColors.waterColor : context.textSecondary,
-                                fontSize: 13,
-                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
 
                 // Quick add buttons
-                Text('Quick Add', style: Theme.of(context).textTheme.titleMedium),
-                SizedBox(height: 10),
+                Text('Quick Add Steps', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 10),
                 Row(
-                  children: _quickAmounts.map((ml) => Expanded(
+                  children: _quickAmounts.map((stepsCount) => Expanded(
                     child: Padding(
-                      padding: EdgeInsets.only(right: _quickAmounts.last == ml ? 0 : 8),
+                      padding: EdgeInsets.only(right: _quickAmounts.last == stepsCount ? 0 : 8),
                       child: GestureDetector(
-                        onTap: () => _addWater(ml),
+                        onTap: () => _addSteps(stepsCount),
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           decoration: BoxDecoration(
-                            color: AppColors.waterColor.withOpacity(0.1),
+                            color: Colors.blueAccent.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppColors.waterColor.withOpacity(0.3)),
+                            border: Border.all(color: Colors.blueAccent.withOpacity(0.3)),
                           ),
                           child: Column(
                             children: [
-                              Text('💧', style: TextStyle(fontSize: 20)),
-                              SizedBox(height: 4),
+                              const Text('🚶', style: TextStyle(fontSize: 20)),
+                              const SizedBox(height: 4),
                               Text(
-                                '${ml}ml',
-                                style: TextStyle(
-                                  color: AppColors.waterColor,
+                                '+$stepsCount',
+                                style: const TextStyle(
+                                  color: Colors.blueAccent,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 12,
                                 ),
@@ -202,31 +194,31 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
                     ),
                   )).toList(),
                 ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.2),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
 
                 // Custom amount
                 OutlinedButton.icon(
                   onPressed: () => _showCustomAmountSheet(context),
-                  icon: Icon(Icons.add_rounded),
-                  label: Text('Custom Amount'),
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Custom Entry'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.waterColor,
-                    side: const BorderSide(color: AppColors.waterColor),
+                    foregroundColor: Colors.blueAccent,
+                    side: const BorderSide(color: Colors.blueAccent),
                     minimumSize: const Size(double.infinity, 48),
                   ),
                 ),
-                SizedBox(height: 24),
+                const SizedBox(height: 24),
 
                 // Weekly chart
                 const SectionHeader(title: 'This Week'),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 GlassCard(
                   child: SizedBox(
                     height: 140,
                     child: BarChart(
                       BarChartData(
                         alignment: BarChartAlignment.spaceAround,
-                        maxY: (goal * 1.2).toDouble(),
+                        maxY: (goal * 1.5).toDouble(),
                         barTouchData: BarTouchData(enabled: false),
                         titlesData: FlTitlesData(
                           show: true,
@@ -250,15 +242,15 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
                         borderData: FlBorderData(show: false),
                         barGroups: weeklyData.entries.toList().asMap().entries.map((entry) {
                           final i = entry.key;
-                          final water = entry.value.value.toDouble();
+                          final steps = entry.value.value.toDouble();
                           final isToday = i == 6;
                           return BarChartGroupData(
                             x: i,
                             barRods: [
                               BarChartRodData(
-                                toY: water,
-                                gradient: isToday ? AppColors.waterGradient : null,
-                                color: isToday ? null : AppColors.waterColor.withOpacity(0.4),
+                                toY: steps,
+                                gradient: isToday ? const LinearGradient(colors: [Colors.blueAccent, Colors.lightBlue]) : null,
+                                color: isToday ? null : Colors.blueAccent.withOpacity(0.4),
                                 width: 24,
                                 borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
                               ),
@@ -269,17 +261,17 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
                     ),
                   ),
                 ).animate().fadeIn(delay: 200.ms),
-                SizedBox(height: 24),
+                const SizedBox(height: 24),
 
                 // Today's logs
                 const SectionHeader(title: "Today's Logs"),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 if (logs.isEmpty)
                   GlassCard(
                     child: Center(
                       child: Padding(
-                        padding: EdgeInsets.all(20),
-                        child: Text('No logs yet today. Stay hydrated! 💧',
+                        padding: const EdgeInsets.all(20),
+                        child: Text('No steps logged yet today. Let\'s get moving! 🚶',
                           style: TextStyle(color: context.textSecondary),
                           textAlign: TextAlign.center,
                         ),
@@ -298,22 +290,22 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
                               width: 40,
                               height: 40,
                               decoration: BoxDecoration(
-                                color: AppColors.waterColor.withOpacity(0.15),
+                                color: Colors.blueAccent.withOpacity(0.15),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: Center(child: Text('💧', style: TextStyle(fontSize: 20))),
+                              child: const Center(child: Text('🚶', style: TextStyle(fontSize: 20))),
                             ),
-                            SizedBox(width: 12),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    '${log.amountMl}ml ${log.drinkType}',
+                                    '${log.steps} steps',
                                     style: Theme.of(context).textTheme.titleMedium,
                                   ),
                                   Text(
-                                    _formatTime(log.timestamp),
+                                    'Logged at ${_formatTime(log.date)}',
                                     style: Theme.of(context).textTheme.bodySmall,
                                   ),
                                 ],
@@ -321,14 +313,14 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
                             ),
                             IconButton(
                               icon: Icon(Icons.delete_outline_rounded, size: 18, color: context.textMuted),
-                              onPressed: () => ref.read(waterProvider.notifier).deleteWaterLog(log.id),
+                              onPressed: () => ref.read(stepsProvider.notifier).deleteStepLog(log.id),
                             ),
                           ],
                         ),
                       ).animate().fadeIn(delay: Duration(milliseconds: entry.key * 50)),
                     );
                   }),
-                SizedBox(height: 80),
+                const SizedBox(height: 80),
               ]),
             ),
           ),
@@ -337,16 +329,17 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
     );
   }
 
-  void _addWater(int ml) {
-    final log = WaterLog(
+  void _addSteps(int steps) {
+    final log = StepLog(
       id: const Uuid().v4(),
-      timestamp: DateTime.now(),
-      amountMl: ml,
-      drinkType: _selectedDrink,
+      date: DateTime.now(),
+      steps: steps,
+      caloriesBurned: (steps * 0.04).toInt(), // Roughly 40 cals per 1000 steps
+      distanceKm: steps * 0.000762, // Roughly 0.76 km per 1000 steps
     );
-    ref.read(waterProvider.notifier).addWaterLog(log);
+    ref.read(stepsProvider.notifier).addStepLog(log);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Added ${ml}ml 💧'), duration: const Duration(seconds: 1)),
+      SnackBar(content: Text('Logged $steps steps 🚶'), duration: const Duration(seconds: 1)),
     );
   }
 
@@ -356,20 +349,20 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: context.surface,
-        title: Text('Custom Amount'),
+        title: const Text('Custom Entry'),
         content: TextField(
           controller: ctrl,
           keyboardType: TextInputType.number,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'Amount (ml)', suffixText: 'ml'),
+          decoration: const InputDecoration(labelText: 'Steps Count', suffixText: 'steps'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () {
-              final ml = int.tryParse(ctrl.text.trim());
-              if (ml != null && ml > 0) {
-                _addWater(ml);
+              final steps = int.tryParse(ctrl.text.trim());
+              if (steps != null && steps > 0) {
+                _addSteps(steps);
                 Navigator.pop(ctx);
               } else {
                 ScaffoldMessenger.of(ctx).showSnackBar(
@@ -377,7 +370,7 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
                 );
               }
             },
-            child: Text('Add'),
+            child: const Text('Add'),
           ),
         ],
       ),
@@ -391,34 +384,34 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
       builder: (_) => StatefulBuilder(
         builder: (ctx, setState) => AlertDialog(
           backgroundColor: context.surface,
-          title: Text('Daily Water Goal'),
+          title: const Text('Daily Steps Goal'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('${goal}ml', style: Theme.of(context).textTheme.displaySmall?.copyWith(color: AppColors.waterColor)),
+              Text('$goal', style: Theme.of(context).textTheme.displaySmall?.copyWith(color: Colors.blueAccent)),
               Slider(
                 value: goal.toDouble(),
-                min: 500,
-                max: 5000,
-                divisions: 90,
-                activeColor: AppColors.waterColor,
+                min: 1000,
+                max: 30000,
+                divisions: 29,
+                activeColor: Colors.blueAccent,
                 inactiveColor: context.border,
                 onChanged: (v) => setState(() => goal = v.toInt()),
               ),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () {
                 final user = ref.read(userProvider);
                 if (user != null) {
-                  user.dailyWaterGoalMl = goal;
+                  user.dailyStepsGoal = goal;
                   ref.read(userProvider.notifier).saveUser(user);
                 }
                 Navigator.pop(context);
               },
-              child: Text('Save'),
+              child: const Text('Save'),
             ),
           ],
         ),

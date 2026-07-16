@@ -1,7 +1,14 @@
-// lib/providers/app_providers.dart
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:pedometer/pedometer.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide EmailAuthProvider;
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:uuid/uuid.dart';
+import 'auth_provider.dart';
 import '../models/models.dart';
+import '../services/notification_service.dart';
 
 // ─── THEME PROVIDER ──────────────────────────────────────────
 final themeProvider = StateNotifierProvider<ThemeNotifier, bool>((ref) {
@@ -16,79 +23,108 @@ class ThemeNotifier extends StateNotifier<bool> {
 
 // ─── USER PROVIDER ───────────────────────────────────────────
 final userProvider = StateNotifierProvider<UserNotifier, UserModel?>((ref) {
-  return UserNotifier();
+  return UserNotifier(ref);
 });
 
 class UserNotifier extends StateNotifier<UserModel?> {
-  UserNotifier() : super(null) {
-    _loadUser();
+  final Ref _ref;
+  StreamSubscription? _sub;
+
+  UserNotifier(this._ref) : super(null) {
+    _listenToAuth();
   }
 
-  void _loadUser() {
-    final box = Hive.box<UserModel>('users');
-    if (box.isNotEmpty) state = box.values.first;
+  void _listenToAuth() {
+    _ref.listen<User?>(currentFirebaseUserProvider, (previous, next) async {
+      _sub?.cancel();
+      if (next == null) {
+        state = null;
+      } else {
+        _sub = FirebaseFirestore.instance.collection('users').doc(next.uid).snapshots().listen((doc) async {
+          if (doc.exists && doc.data() != null && doc.data()!['heightCm'] != null) {
+            final data = doc.data()!;
+            state = UserModel.fromMap(data, next.uid);
+          } else {
+             // User has not completed onboarding
+             state = null;
+          }
+        });
+      }
+    }, fireImmediately: true);
   }
 
   Future<void> saveUser(UserModel user) async {
-    final box = Hive.box<UserModel>('users');
-    await box.put(user.id, user);
-    state = user;
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(user.id).set(user.toMap(), SetOptions(merge: true));
+    } catch (_) {}
   }
 
   Future<void> updateUser(UserModel user) async {
-    final box = Hive.box<UserModel>('users');
-    await box.put(user.id, user);
-    state = user;
+    await saveUser(user);
   }
 
-  Future<void> setPremium(bool isPremium, {DateTime? expiry}) async {
+  Future<void> setPremium(bool isPremium, {DateTime? expiry, String? plan}) async {
     if (state == null) return;
     final updated = state!
       ..isPremium = isPremium
-      ..premiumExpiry = expiry;
+      ..premiumExpiry = expiry
+      ..premiumPlan = plan;
     await saveUser(updated);
   }
 
   void logout() {
     state = null;
   }
+  
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
 }
 
 // ─── HABITS PROVIDER ─────────────────────────────────────────
 final habitsProvider = StateNotifierProvider<HabitsNotifier, List<Habit>>((ref) {
-  return HabitsNotifier();
+  return HabitsNotifier(ref);
 });
 
 class HabitsNotifier extends StateNotifier<List<Habit>> {
-  HabitsNotifier() : super([]) {
-    _loadHabits();
-  }
+  final Ref _ref;
+  StreamSubscription? _sub;
 
-  void _loadHabits() {
-    final box = Hive.box<Habit>('habits');
-    state = box.values.where((h) => !h.isArchived).toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  HabitsNotifier(this._ref) : super([]) {
+    _ref.listen<User?>(currentFirebaseUserProvider, (prev, next) {
+      _sub?.cancel();
+      if (next == null) {
+        state = [];
+      } else {
+        _sub = FirebaseFirestore.instance.collection('users').doc(next.uid).collection('habits')
+            .where('isArchived', isEqualTo: false)
+            .snapshots().listen((snapshot) {
+          final items = snapshot.docs.map((doc) => Habit.fromMap(doc.data(), doc.id)).toList();
+          items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          state = items;
+        });
+      }
+    }, fireImmediately: true);
   }
 
   Future<void> addHabit(Habit habit) async {
-    final box = Hive.box<Habit>('habits');
-    await box.put(habit.id, habit);
-    _loadHabits();
+    final user = _ref.read(currentFirebaseUserProvider);
+    if (user == null) return;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('habits').doc(habit.id).set(habit.toMap());
   }
 
   Future<void> updateHabit(Habit habit) async {
-    final box = Hive.box<Habit>('habits');
-    await box.put(habit.id, habit);
-    _loadHabits();
+    final user = _ref.read(currentFirebaseUserProvider);
+    if (user == null) return;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('habits').doc(habit.id).set(habit.toMap(), SetOptions(merge: true));
   }
 
   Future<void> toggleHabitCompletion(String habitId, DateTime date) async {
-    final box = Hive.box<Habit>('habits');
-    final habit = box.get(habitId);
-    if (habit == null) return;
-
+    final habit = state.firstWhere((h) => h.id == habitId);
     final isCompleted = habit.isCompletedOn(date);
-    // Ensure the list is mutable (Hive may return a const/fixed-length list)
+    
     final mutableDates = List<DateTime>.from(habit.completedDates);
     if (isCompleted) {
       mutableDates.removeWhere(
@@ -99,10 +135,8 @@ class HabitsNotifier extends StateNotifier<List<Habit>> {
     }
     habit.completedDates = mutableDates;
 
-    // Recalculate streak
     _recalculateStreak(habit);
-    await habit.save();
-    _loadHabits();
+    await updateHabit(habit);
   }
 
   void _recalculateStreak(Habit habit) {
@@ -117,18 +151,18 @@ class HabitsNotifier extends StateNotifier<List<Habit>> {
   }
 
   Future<void> deleteHabit(String habitId) async {
-    final box = Hive.box<Habit>('habits');
-    await box.delete(habitId);
-    _loadHabits();
+    final user = _ref.read(currentFirebaseUserProvider);
+    if (user == null) return;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('habits').doc(habitId).delete();
+    try {
+      await NotificationService.cancelHabitReminders(habitId.hashCode);
+    } catch (_) {}
   }
 
   Future<void> archiveHabit(String habitId) async {
-    final box = Hive.box<Habit>('habits');
-    final habit = box.get(habitId);
-    if (habit == null) return;
+    final habit = state.firstWhere((h) => h.id == habitId);
     habit.isArchived = true;
-    await habit.save();
-    _loadHabits();
+    await updateHabit(habit);
   }
 
   List<Habit> getHabitsForToday() {
@@ -140,45 +174,62 @@ class HabitsNotifier extends StateNotifier<List<Habit>> {
     final today = DateTime.now();
     return getHabitsForToday().where((h) => h.isCompletedOn(today)).length;
   }
+  
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
 }
 
 // ─── WATER PROVIDER ──────────────────────────────────────────
 final waterProvider = StateNotifierProvider<WaterNotifier, List<WaterLog>>((ref) {
-  return WaterNotifier();
+  return WaterNotifier(ref);
 });
 
 class WaterNotifier extends StateNotifier<List<WaterLog>> {
-  WaterNotifier() : super([]) {
-    _loadTodayLogs();
-  }
+  final Ref _ref;
+  StreamSubscription? _sub;
+  List<WaterLog> _allLogs = [];
 
-  void _loadTodayLogs() {
-    final box = Hive.box<WaterLog>('water_logs');
-    final today = DateTime.now();
-    state = box.values.where((l) =>
-        l.timestamp.year == today.year &&
-        l.timestamp.month == today.month &&
-        l.timestamp.day == today.day).toList()
-      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+  WaterNotifier(this._ref) : super([]) {
+    _ref.listen<User?>(currentFirebaseUserProvider, (prev, next) {
+      _sub?.cancel();
+      if (next == null) {
+        _allLogs = [];
+        state = [];
+      } else {
+        _sub = FirebaseFirestore.instance.collection('users').doc(next.uid).collection('water_logs')
+            .snapshots().listen((snapshot) {
+          _allLogs = snapshot.docs.map((doc) => WaterLog.fromMap(doc.data(), doc.id)).toList();
+          final today = DateTime.now();
+          final todayLogs = _allLogs.where((l) =>
+              l.timestamp.year == today.year &&
+              l.timestamp.month == today.month &&
+              l.timestamp.day == today.day).toList()
+            ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+          state = todayLogs;
+        });
+      }
+    }, fireImmediately: true);
   }
 
   Future<void> addWaterLog(WaterLog log) async {
-    final box = Hive.box<WaterLog>('water_logs');
-    await box.put(log.id, log);
-    _loadTodayLogs();
+    final user = _ref.read(currentFirebaseUserProvider);
+    if (user == null) return;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('water_logs').doc(log.id).set(log.toMap());
   }
 
   Future<void> deleteWaterLog(String id) async {
-    final box = Hive.box<WaterLog>('water_logs');
-    await box.delete(id);
-    _loadTodayLogs();
+    final user = _ref.read(currentFirebaseUserProvider);
+    if (user == null) return;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('water_logs').doc(id).delete();
   }
 
   int get todayTotalMl => state.fold(0, (sum, log) => sum + log.amountMl);
 
   List<WaterLog> getLogsForDate(DateTime date) {
-    final box = Hive.box<WaterLog>('water_logs');
-    return box.values.where((l) =>
+    return _allLogs.where((l) =>
         l.timestamp.year == date.year &&
         l.timestamp.month == date.month &&
         l.timestamp.day == date.day).toList();
@@ -193,40 +244,55 @@ class WaterNotifier extends StateNotifier<List<WaterLog>> {
     }
     return result;
   }
+  
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
 }
 
 // ─── WORKOUT PROVIDER ────────────────────────────────────────
 final workoutProvider = StateNotifierProvider<WorkoutNotifier, List<WorkoutSession>>((ref) {
-  return WorkoutNotifier();
+  return WorkoutNotifier(ref);
 });
 
 class WorkoutNotifier extends StateNotifier<List<WorkoutSession>> {
-  WorkoutNotifier() : super([]) {
-    _loadSessions();
-  }
+  final Ref _ref;
+  StreamSubscription? _sub;
 
-  void _loadSessions() {
-    final box = Hive.box<WorkoutSession>('workouts');
-    state = box.values.toList()
-      ..sort((a, b) => b.startTime.compareTo(a.startTime));
+  WorkoutNotifier(this._ref) : super([]) {
+    _ref.listen<User?>(currentFirebaseUserProvider, (prev, next) {
+      _sub?.cancel();
+      if (next == null) {
+        state = [];
+      } else {
+        _sub = FirebaseFirestore.instance.collection('users').doc(next.uid).collection('workouts')
+            .snapshots().listen((snapshot) {
+          final items = snapshot.docs.map((doc) => WorkoutSession.fromMap(doc.data(), doc.id)).toList();
+          items.sort((a, b) => b.startTime.compareTo(a.startTime));
+          state = items;
+        });
+      }
+    }, fireImmediately: true);
   }
 
   Future<void> addSession(WorkoutSession session) async {
-    final box = Hive.box<WorkoutSession>('workouts');
-    await box.put(session.id, session);
-    _loadSessions();
+    final user = _ref.read(currentFirebaseUserProvider);
+    if (user == null) return;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('workouts').doc(session.id).set(session.toMap());
   }
 
   Future<void> updateSession(WorkoutSession session) async {
-    final box = Hive.box<WorkoutSession>('workouts');
-    await box.put(session.id, session);
-    _loadSessions();
+    final user = _ref.read(currentFirebaseUserProvider);
+    if (user == null) return;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('workouts').doc(session.id).set(session.toMap(), SetOptions(merge: true));
   }
 
   Future<void> deleteSession(String id) async {
-    final box = Hive.box<WorkoutSession>('workouts');
-    await box.delete(id);
-    _loadSessions();
+    final user = _ref.read(currentFirebaseUserProvider);
+    if (user == null) return;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('workouts').doc(id).delete();
   }
 
   List<WorkoutSession> getThisWeekSessions() {
@@ -239,34 +305,49 @@ class WorkoutNotifier extends StateNotifier<List<WorkoutSession>> {
   int getThisWeekWorkouts() => getThisWeekSessions().length;
   int getThisWeekMinutes() => getThisWeekSessions().fold(0, (s, w) => s + w.durationMinutes);
   int getThisWeekCalories() => getThisWeekSessions().fold(0, (s, w) => s + (w.caloriesBurned ?? 0));
+  
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
 }
 
 // ─── SLEEP PROVIDER ──────────────────────────────────────────
 final sleepProvider = StateNotifierProvider<SleepNotifier, List<SleepLog>>((ref) {
-  return SleepNotifier();
+  return SleepNotifier(ref);
 });
 
 class SleepNotifier extends StateNotifier<List<SleepLog>> {
-  SleepNotifier() : super([]) {
-    _loadLogs();
-  }
+  final Ref _ref;
+  StreamSubscription? _sub;
 
-  void _loadLogs() {
-    final box = Hive.box<SleepLog>('sleep_logs');
-    state = box.values.toList()
-      ..sort((a, b) => b.bedTime.compareTo(a.bedTime));
+  SleepNotifier(this._ref) : super([]) {
+    _ref.listen<User?>(currentFirebaseUserProvider, (prev, next) {
+      _sub?.cancel();
+      if (next == null) {
+        state = [];
+      } else {
+        _sub = FirebaseFirestore.instance.collection('users').doc(next.uid).collection('sleep_logs')
+            .snapshots().listen((snapshot) {
+          final items = snapshot.docs.map((doc) => SleepLog.fromMap(doc.data(), doc.id)).toList();
+          items.sort((a, b) => b.bedTime.compareTo(a.bedTime));
+          state = items;
+        });
+      }
+    }, fireImmediately: true);
   }
 
   Future<void> addLog(SleepLog log) async {
-    final box = Hive.box<SleepLog>('sleep_logs');
-    await box.put(log.id, log);
-    _loadLogs();
+    final user = _ref.read(currentFirebaseUserProvider);
+    if (user == null) return;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('sleep_logs').doc(log.id).set(log.toMap());
   }
 
   Future<void> deleteLog(String id) async {
-    final box = Hive.box<SleepLog>('sleep_logs');
-    await box.delete(id);
-    _loadLogs();
+    final user = _ref.read(currentFirebaseUserProvider);
+    if (user == null) return;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('sleep_logs').doc(id).delete();
   }
 
   SleepLog? get lastNightSleep => state.isEmpty ? null : state.first;
@@ -282,34 +363,49 @@ class SleepNotifier extends StateNotifier<List<SleepLog>> {
     final recent = state.take(7).toList();
     return recent.fold(0.0, (s, l) => s + l.qualityOutOf5) / recent.length;
   }
+  
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
 }
 
 // ─── WEIGHT PROVIDER ─────────────────────────────────────────
 final weightProvider = StateNotifierProvider<WeightNotifier, List<WeightLog>>((ref) {
-  return WeightNotifier();
+  return WeightNotifier(ref);
 });
 
 class WeightNotifier extends StateNotifier<List<WeightLog>> {
-  WeightNotifier() : super([]) {
-    _loadLogs();
-  }
+  final Ref _ref;
+  StreamSubscription? _sub;
 
-  void _loadLogs() {
-    final box = Hive.box<WeightLog>('weight_logs');
-    state = box.values.toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+  WeightNotifier(this._ref) : super([]) {
+    _ref.listen<User?>(currentFirebaseUserProvider, (prev, next) {
+      _sub?.cancel();
+      if (next == null) {
+        state = [];
+      } else {
+        _sub = FirebaseFirestore.instance.collection('users').doc(next.uid).collection('weight_logs')
+            .snapshots().listen((snapshot) {
+          final items = snapshot.docs.map((doc) => WeightLog.fromMap(doc.data(), doc.id)).toList();
+          items.sort((a, b) => b.date.compareTo(a.date));
+          state = items;
+        });
+      }
+    }, fireImmediately: true);
   }
 
   Future<void> addLog(WeightLog log) async {
-    final box = Hive.box<WeightLog>('weight_logs');
-    await box.put(log.id, log);
-    _loadLogs();
+    final user = _ref.read(currentFirebaseUserProvider);
+    if (user == null) return;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('weight_logs').doc(log.id).set(log.toMap());
   }
 
   Future<void> deleteLog(String id) async {
-    final box = Hive.box<WeightLog>('weight_logs');
-    await box.delete(id);
-    _loadLogs();
+    final user = _ref.read(currentFirebaseUserProvider);
+    if (user == null) return;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('weight_logs').doc(id).delete();
   }
 
   WeightLog? get latestLog => state.isEmpty ? null : state.first;
@@ -318,28 +414,43 @@ class WeightNotifier extends StateNotifier<List<WeightLog>> {
     if (state.length < 2) return null;
     return state.first.weightKg - state.last.weightKg;
   }
+  
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
 }
 
 // ─── MOOD PROVIDER ───────────────────────────────────────────
 final moodProvider = StateNotifierProvider<MoodNotifier, List<MoodLog>>((ref) {
-  return MoodNotifier();
+  return MoodNotifier(ref);
 });
 
 class MoodNotifier extends StateNotifier<List<MoodLog>> {
-  MoodNotifier() : super([]) {
-    _loadLogs();
-  }
+  final Ref _ref;
+  StreamSubscription? _sub;
 
-  void _loadLogs() {
-    final box = Hive.box<MoodLog>('mood_logs');
-    state = box.values.toList()
-      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+  MoodNotifier(this._ref) : super([]) {
+    _ref.listen<User?>(currentFirebaseUserProvider, (prev, next) {
+      _sub?.cancel();
+      if (next == null) {
+        state = [];
+      } else {
+        _sub = FirebaseFirestore.instance.collection('users').doc(next.uid).collection('mood_logs')
+            .snapshots().listen((snapshot) {
+          final items = snapshot.docs.map((doc) => MoodLog.fromMap(doc.data(), doc.id)).toList();
+          items.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+          state = items;
+        });
+      }
+    }, fireImmediately: true);
   }
 
   Future<void> addLog(MoodLog log) async {
-    final box = Hive.box<MoodLog>('mood_logs');
-    await box.put(log.id, log);
-    _loadLogs();
+    final user = _ref.read(currentFirebaseUserProvider);
+    if (user == null) return;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('mood_logs').doc(log.id).set(log.toMap());
   }
 
   MoodLog? get todayMood {
@@ -359,6 +470,12 @@ class MoodNotifier extends StateNotifier<List<MoodLog>> {
     final recent = state.take(7).toList();
     return recent.fold(0.0, (s, l) => s + l.moodScore) / recent.length;
   }
+  
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
 }
 
 // ─── PREMIUM PROVIDER ────────────────────────────────────────
@@ -369,34 +486,298 @@ final premiumProvider = StateNotifierProvider<PremiumNotifier, bool>((ref) {
 
 class PremiumNotifier extends StateNotifier<bool> {
   PremiumNotifier(bool initial) : super(initial);
-
   void setPremium(bool value) => state = value;
 }
 
 // ─── WORKOUT TEMPLATES PROVIDER ──────────────────────────────
 final workoutTemplatesProvider = StateNotifierProvider<WorkoutTemplatesNotifier, List<WorkoutTemplate>>((ref) {
-  return WorkoutTemplatesNotifier();
+  return WorkoutTemplatesNotifier(ref);
 });
 
 class WorkoutTemplatesNotifier extends StateNotifier<List<WorkoutTemplate>> {
-  WorkoutTemplatesNotifier() : super([]) {
-    _loadTemplates();
+  final Ref _ref;
+  StreamSubscription? _sub;
+
+  WorkoutTemplatesNotifier(this._ref) : super([]) {
+    _ref.listen<User?>(currentFirebaseUserProvider, (prev, next) {
+      _sub?.cancel();
+      if (next == null) {
+        state = [];
+      } else {
+        _sub = FirebaseFirestore.instance.collection('users').doc(next.uid).collection('workout_templates')
+            .snapshots().listen((snapshot) async {
+          if (snapshot.docs.isEmpty) {
+            // Initialize default templates if empty
+            await _initDefaultTemplates(next.uid);
+          } else {
+            state = snapshot.docs.map((doc) => WorkoutTemplate.fromMap(doc.data(), doc.id)).toList();
+          }
+        });
+      }
+    }, fireImmediately: true);
   }
 
-  void _loadTemplates() {
-    final box = Hive.box<WorkoutTemplate>('workout_templates');
-    state = box.values.toList();
+  Future<void> _initDefaultTemplates(String uid) async {
+    final defaults = [
+      WorkoutTemplate(
+        id: 't1',
+        name: 'Push Day (Chest, Shoulders, Triceps)',
+        type: 'strength',
+        exercises: [
+          ExerciseSet(exerciseName: 'Bench Press', exerciseType: 'reps', sets: [SetEntry(reps: 10, weightKg: 40)], muscleGroup: 'Chest'),
+          ExerciseSet(exerciseName: 'Overhead Press', exerciseType: 'reps', sets: [SetEntry(reps: 12, weightKg: 20)], muscleGroup: 'Shoulders'),
+          ExerciseSet(exerciseName: 'Tricep Pushdown', exerciseType: 'reps', sets: [SetEntry(reps: 15, weightKg: 15)], muscleGroup: 'Triceps'),
+        ],
+      ),
+      WorkoutTemplate(
+        id: 't2',
+        name: 'Pull Day (Back & Biceps)',
+        type: 'strength',
+        exercises: [
+          ExerciseSet(exerciseName: 'Pull-ups', exerciseType: 'reps', sets: [SetEntry(reps: 8)], muscleGroup: 'Back'),
+          ExerciseSet(exerciseName: 'Barbell Row', exerciseType: 'reps', sets: [SetEntry(reps: 10, weightKg: 40)], muscleGroup: 'Back'),
+          ExerciseSet(exerciseName: 'Bicep Curls', exerciseType: 'reps', sets: [SetEntry(reps: 15, weightKg: 10)], muscleGroup: 'Biceps'),
+        ],
+      ),
+      WorkoutTemplate(
+        id: 't3',
+        name: 'Leg Day',
+        type: 'strength',
+        exercises: [
+          ExerciseSet(exerciseName: 'Squats', exerciseType: 'reps', sets: [SetEntry(reps: 10, weightKg: 60)], muscleGroup: 'Legs'),
+          ExerciseSet(exerciseName: 'Leg Press', exerciseType: 'reps', sets: [SetEntry(reps: 12, weightKg: 100)], muscleGroup: 'Legs'),
+          ExerciseSet(exerciseName: 'Calf Raises', exerciseType: 'reps', sets: [SetEntry(reps: 20, weightKg: 40)], muscleGroup: 'Legs'),
+        ],
+      ),
+      WorkoutTemplate(
+        id: 't4',
+        name: 'Full Body HIIT',
+        type: 'hiit',
+        exercises: [
+          ExerciseSet(exerciseName: 'Burpees', exerciseType: 'reps', sets: [SetEntry(reps: 20)], muscleGroup: 'Full Body'),
+          ExerciseSet(exerciseName: 'Mountain Climbers', exerciseType: 'duration', sets: [SetEntry(durationSeconds: 60)], muscleGroup: 'Core'),
+          ExerciseSet(exerciseName: 'Jump Squats', exerciseType: 'reps', sets: [SetEntry(reps: 15)], muscleGroup: 'Legs'),
+        ],
+      ),
+    ];
+    
+    for (var t in defaults) {
+      await FirebaseFirestore.instance.collection('users').doc(uid).collection('workout_templates').doc(t.id).set(t.toMap());
+    }
   }
 
   Future<void> addTemplate(WorkoutTemplate template) async {
-    final box = Hive.box<WorkoutTemplate>('workout_templates');
-    await box.put(template.id, template);
-    _loadTemplates();
+    final user = _ref.read(currentFirebaseUserProvider);
+    if (user == null) return;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('workout_templates').doc(template.id).set(template.toMap());
   }
 
   Future<void> deleteTemplate(String id) async {
-    final box = Hive.box<WorkoutTemplate>('workout_templates');
-    await box.delete(id);
-    _loadTemplates();
+    final user = _ref.read(currentFirebaseUserProvider);
+    if (user == null) return;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('workout_templates').doc(id).delete();
+  }
+  
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+}
+
+// ─── STEPS PROVIDER ──────────────────────────────────────────
+final stepsProvider = StateNotifierProvider<StepsNotifier, List<StepLog>>((ref) {
+  return StepsNotifier(ref);
+});
+
+class StepsNotifier extends StateNotifier<List<StepLog>> {
+  final Ref _ref;
+  StreamSubscription? _sub;
+  StreamSubscription<StepCount>? _stepCountStream;
+  StreamSubscription<PedestrianStatus>? _pedestrianStatusStream;
+  int _baseSteps = 0;
+  DateTime? _lastDate;
+  int _sensorStepsToday = 0;
+  String pedestrianStatus = 'unknown';
+
+  StepsNotifier(this._ref) : super([]) {
+    _ref.listen<User?>(currentFirebaseUserProvider, (prev, next) {
+      _sub?.cancel();
+      if (next == null) {
+        state = [];
+      } else {
+        _sub = FirebaseFirestore.instance.collection('users').doc(next.uid).collection('step_logs')
+            .snapshots().listen((snapshot) {
+          final items = snapshot.docs.map((doc) => StepLog.fromMap(doc.data(), doc.id)).toList();
+          final today = DateTime.now();
+          final todayLogs = items.where((l) =>
+              l.date.year == today.year &&
+              l.date.month == today.month &&
+              l.date.day == today.day).toList()
+            ..sort((a, b) => b.date.compareTo(a.date));
+          state = todayLogs;
+        });
+      }
+    }, fireImmediately: true);
+    
+    _initPedometer();
+  }
+
+  Future<void> _initPedometer() async {
+    final status = await Permission.activityRecognition.request();
+    if (status.isDenied || status.isPermanentlyDenied) {
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    _baseSteps = prefs.getInt('baseSteps') ?? -1;
+    if (_baseSteps == 0) _baseSteps = -1;
+    
+    final lastDateStr = prefs.getString('lastStepsDate');
+    _lastDate = lastDateStr != null ? DateTime.tryParse(lastDateStr) : null;
+    _sensorStepsToday = prefs.getInt('lastKnownSensorSteps') ?? 0;
+
+    final now = DateTime.now();
+    if (_lastDate == null || _lastDate!.day != now.day || _lastDate!.month != now.month || _lastDate!.year != now.year) {
+      // It's a new day! Save yesterday's steps to Firestore before resetting.
+      if (_lastDate != null && _sensorStepsToday > 0) {
+        final log = StepLog(
+          id: const Uuid().v4(),
+          date: _lastDate!,
+          steps: _sensorStepsToday,
+          caloriesBurned: (_sensorStepsToday * 0.04).toInt(),
+          distanceKm: _sensorStepsToday * 0.000762,
+        );
+        // Fire and forget so we don't block initialization
+        addStepLog(log);
+      }
+      
+      _baseSteps = -1; 
+      _sensorStepsToday = 0;
+      _lastDate = now;
+      await prefs.setString('lastStepsDate', now.toIso8601String());
+      await prefs.setInt('lastKnownSensorSteps', 0);
+    }
+
+    try {
+      _pedestrianStatusStream = Pedometer.pedestrianStatusStream.listen(
+        (PedestrianStatus event) {
+          pedestrianStatus = event.status;
+        },
+        onError: (error) {
+          pedestrianStatus = 'error';
+        },
+      );
+
+      _stepCountStream = Pedometer.stepCountStream.listen(
+        (StepCount event) async {
+          final currentSteps = event.steps;
+          
+          if (_baseSteps == -1 || currentSteps < _baseSteps) {
+            _baseSteps = currentSteps;
+            await prefs.setInt('baseSteps', _baseSteps);
+          }
+          
+          _sensorStepsToday = currentSteps - _baseSteps;
+          await prefs.setInt('lastKnownSensorSteps', _sensorStepsToday);
+          
+          state = [...state]; // Force UI update for live steps
+        },
+        onError: (error) {},
+      );
+    } catch (e) {}
+  }
+
+  Future<void> addStepLog(StepLog log) async {
+    final user = _ref.read(currentFirebaseUserProvider);
+    if (user == null) return;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('step_logs').doc(log.id).set(log.toMap());
+  }
+
+  Future<void> deleteStepLog(String id) async {
+    final user = _ref.read(currentFirebaseUserProvider);
+    if (user == null) return;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('step_logs').doc(id).delete();
+  }
+
+  int get todayTotalSteps {
+    final manualSteps = state.fold(0, (sum, log) => sum + log.steps);
+    return manualSteps + _sensorStepsToday;
+  }
+  
+  int get todayTotalCalories {
+    final manualCals = state.fold(0, (sum, log) => sum + (log.caloriesBurned ?? 0));
+    final sensorCals = (_sensorStepsToday * 0.04).toInt(); 
+    return manualCals + sensorCals;
+  }
+  
+  double get todayTotalDistanceKm {
+    final manualDist = state.fold(0.0, (sum, log) => sum + (log.distanceKm ?? 0.0));
+    final sensorDist = _sensorStepsToday * 0.000762; 
+    return manualDist + sensorDist;
+  }
+  
+  int get todayTotalActiveMinutes => state.fold(0, (sum, log) => sum + (log.activeMinutes ?? 0));
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    _stepCountStream?.cancel();
+    _pedestrianStatusStream?.cancel();
+    super.dispose();
+  }
+}
+
+// ─── NUTRITION PROVIDER ──────────────────────────────────────
+final nutritionProvider = StateNotifierProvider<NutritionNotifier, List<NutritionLog>>((ref) {
+  return NutritionNotifier(ref);
+});
+
+class NutritionNotifier extends StateNotifier<List<NutritionLog>> {
+  final Ref _ref;
+  StreamSubscription? _sub;
+
+  NutritionNotifier(this._ref) : super([]) {
+    _ref.listen<User?>(currentFirebaseUserProvider, (prev, next) {
+      _sub?.cancel();
+      if (next == null) {
+        state = [];
+      } else {
+        _sub = FirebaseFirestore.instance.collection('users').doc(next.uid).collection('nutrition_logs')
+            .snapshots().listen((snapshot) {
+          final items = snapshot.docs.map((doc) => NutritionLog.fromMap(doc.data(), doc.id)).toList();
+          final today = DateTime.now();
+          final todayLogs = items.where((l) =>
+              l.date.year == today.year &&
+              l.date.month == today.month &&
+              l.date.day == today.day).toList()
+            ..sort((a, b) => b.date.compareTo(a.date));
+          state = todayLogs;
+        });
+      }
+    }, fireImmediately: true);
+  }
+
+  Future<void> addNutritionLog(NutritionLog log) async {
+    final user = _ref.read(currentFirebaseUserProvider);
+    if (user == null) return;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('nutrition_logs').doc(log.id).set(log.toMap());
+  }
+
+  Future<void> deleteNutritionLog(String id) async {
+    final user = _ref.read(currentFirebaseUserProvider);
+    if (user == null) return;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('nutrition_logs').doc(id).delete();
+  }
+
+  double get todayTotalCalories => state.fold(0.0, (sum, log) => sum + log.calories);
+  double get todayTotalProtein => state.fold(0.0, (sum, log) => sum + (log.proteinG ?? 0));
+  double get todayTotalCarbs => state.fold(0.0, (sum, log) => sum + (log.carbsG ?? 0));
+  double get todayTotalFat => state.fold(0.0, (sum, log) => sum + (log.fatG ?? 0));
+  
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
   }
 }

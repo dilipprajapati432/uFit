@@ -1,29 +1,26 @@
 // lib/models/models.dart
-import 'package:hive/hive.dart';
-
-part 'models.g.dart';
 
 // ─── USER ────────────────────────────────────────────────────
-@HiveType(typeId: 0)
-class UserModel extends HiveObject {
-  @HiveField(0) String id;
-  @HiveField(1) String name;
-  @HiveField(2) String email;
-  @HiveField(3) String? photoUrl;
-  @HiveField(4) DateTime createdAt;
-  @HiveField(5) bool isPremium;
-  @HiveField(6) DateTime? premiumExpiry;
-  @HiveField(7) double? heightCm;
-  @HiveField(8) double? weightKg;
-  @HiveField(9) int? age;
-  @HiveField(10) String? gender;
-  @HiveField(11) String? fitnessGoal; // lose_weight, gain_muscle, maintain, active_lifestyle
-  @HiveField(12) int dailyWaterGoalMl;
-  @HiveField(13) int dailyStepsGoal;
-  @HiveField(14) int dailyCalorieGoal;
-  @HiveField(15) double targetWeightKg;
-  @HiveField(16) int sleepGoalHours;
-  @HiveField(17) String? geminiApiKey;
+class UserModel {
+  String id;
+  String name;
+  String email;
+  String? photoUrl;
+  DateTime createdAt;
+  bool isPremium;
+  DateTime? premiumExpiry;
+  String? premiumPlan;
+  double? heightCm;
+  double? weightKg;
+  int? age;
+  String? gender;
+  String? fitnessGoal; // lose_weight, gain_muscle, maintain, active_lifestyle
+  int dailyWaterGoalMl;
+  int dailyStepsGoal;
+  int dailyCalorieGoal;
+  double targetWeightKg;
+  int sleepGoalHours;
+  String? geminiApiKey;
 
   UserModel({
     required this.id,
@@ -33,6 +30,7 @@ class UserModel extends HiveObject {
     required this.createdAt,
     this.isPremium = false,
     this.premiumExpiry,
+    this.premiumPlan,
     this.heightCm,
     this.weightKg,
     this.age,
@@ -45,26 +43,73 @@ class UserModel extends HiveObject {
     this.sleepGoalHours = 8,
     this.geminiApiKey,
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'email': email,
+      'photoUrl': photoUrl,
+      'createdAt': createdAt.toIso8601String(),
+      'isPremium': isPremium,
+      'premiumExpiry': premiumExpiry?.toIso8601String(),
+      'premiumPlan': premiumPlan,
+      'heightCm': heightCm,
+      'weightKg': weightKg,
+      'age': age,
+      'gender': gender,
+      'fitnessGoal': fitnessGoal,
+      'dailyWaterGoalMl': dailyWaterGoalMl,
+      'dailyStepsGoal': dailyStepsGoal,
+      'dailyCalorieGoal': dailyCalorieGoal,
+      'targetWeightKg': targetWeightKg,
+      'sleepGoalHours': sleepGoalHours,
+      'geminiApiKey': geminiApiKey,
+    };
+  }
+
+  factory UserModel.fromMap(Map<String, dynamic> map, String id) {
+    return UserModel(
+      id: id,
+      name: map['name'] ?? '',
+      email: map['email'] ?? '',
+      photoUrl: map['photoUrl'],
+      createdAt: map['createdAt'] != null ? DateTime.parse(map['createdAt']) : DateTime.now(),
+      isPremium: map['isPremium'] ?? false,
+      premiumExpiry: map['premiumExpiry'] != null ? DateTime.parse(map['premiumExpiry']) : null,
+      premiumPlan: map['premiumPlan'],
+      heightCm: map['heightCm']?.toDouble(),
+      weightKg: map['weightKg']?.toDouble(),
+      age: map['age']?.toInt(),
+      gender: map['gender'],
+      fitnessGoal: map['fitnessGoal'],
+      dailyWaterGoalMl: map['dailyWaterGoalMl']?.toInt() ?? 2500,
+      dailyStepsGoal: map['dailyStepsGoal']?.toInt() ?? 10000,
+      dailyCalorieGoal: map['dailyCalorieGoal']?.toInt() ?? 2000,
+      targetWeightKg: map['targetWeightKg']?.toDouble() ?? 70.0,
+      sleepGoalHours: map['sleepGoalHours']?.toInt() ?? 8,
+      geminiApiKey: map['geminiApiKey'],
+    );
+  }
 }
 
 // ─── HABIT ───────────────────────────────────────────────────
-@HiveType(typeId: 1)
-class Habit extends HiveObject {
-  @HiveField(0) String id;
-  @HiveField(1) String name;
-  @HiveField(2) String description;
-  @HiveField(3) String icon;
-  @HiveField(4) int colorIndex;
-  @HiveField(5) String frequency; // daily, weekdays, weekends, custom
-  @HiveField(6) List<int> weekDays; // 1=Mon ... 7=Sun
-  @HiveField(7) String? reminderTime; // "HH:mm"
-  @HiveField(8) bool reminderEnabled;
-  @HiveField(9) DateTime createdAt;
-  @HiveField(10) List<DateTime> completedDates;
-  @HiveField(11) int currentStreak;
-  @HiveField(12) int longestStreak;
-  @HiveField(13) bool isArchived;
-  @HiveField(14) String category; // health, fitness, mindfulness, productivity, social, learning
+class Habit {
+  String id;
+  String name;
+  String description;
+  String icon;
+  int colorIndex;
+  String frequency; // daily, weekdays, weekends, custom
+  List<int> weekDays; // 1=Mon ... 7=Sun
+  String? reminderTime; // "HH:mm"
+  bool reminderEnabled;
+  DateTime createdAt;
+  List<DateTime> completedDates;
+  int currentStreak;
+  int longestStreak;
+  bool isArchived;
+  String category; // health, fitness, mindfulness, productivity, social, learning
 
   Habit({
     required this.id,
@@ -102,15 +147,54 @@ class Habit extends HiveObject {
     }
     return total == 0 ? 0 : completed / total;
   }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'icon': icon,
+      'colorIndex': colorIndex,
+      'frequency': frequency,
+      'weekDays': weekDays,
+      'reminderTime': reminderTime,
+      'reminderEnabled': reminderEnabled,
+      'createdAt': createdAt.toIso8601String(),
+      'completedDates': completedDates.map((d) => d.toIso8601String()).toList(),
+      'currentStreak': currentStreak,
+      'longestStreak': longestStreak,
+      'isArchived': isArchived,
+      'category': category,
+    };
+  }
+
+  factory Habit.fromMap(Map<String, dynamic> map, String id) {
+    return Habit(
+      id: id,
+      name: map['name'] ?? '',
+      description: map['description'] ?? '',
+      icon: map['icon'] ?? '',
+      colorIndex: map['colorIndex']?.toInt() ?? 0,
+      frequency: map['frequency'] ?? 'daily',
+      weekDays: List<int>.from(map['weekDays'] ?? [1, 2, 3, 4, 5, 6, 7]),
+      reminderTime: map['reminderTime'],
+      reminderEnabled: map['reminderEnabled'] ?? false,
+      createdAt: map['createdAt'] != null ? DateTime.parse(map['createdAt']) : DateTime.now(),
+      completedDates: (map['completedDates'] as List<dynamic>?)?.map((d) => DateTime.parse(d)).toList() ?? [],
+      currentStreak: map['currentStreak']?.toInt() ?? 0,
+      longestStreak: map['longestStreak']?.toInt() ?? 0,
+      isArchived: map['isArchived'] ?? false,
+      category: map['category'] ?? 'health',
+    );
+  }
 }
 
 // ─── WATER ───────────────────────────────────────────────────
-@HiveType(typeId: 2)
-class WaterLog extends HiveObject {
-  @HiveField(0) String id;
-  @HiveField(1) DateTime timestamp;
-  @HiveField(2) int amountMl;
-  @HiveField(3) String drinkType; // water, tea, coffee, juice, etc.
+class WaterLog {
+  String id;
+  DateTime timestamp;
+  int amountMl;
+  String drinkType; // water, tea, coffee, juice, etc.
 
   WaterLog({
     required this.id,
@@ -118,22 +202,39 @@ class WaterLog extends HiveObject {
     required this.amountMl,
     this.drinkType = 'water',
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'timestamp': timestamp.toIso8601String(),
+      'amountMl': amountMl,
+      'drinkType': drinkType,
+    };
+  }
+
+  factory WaterLog.fromMap(Map<String, dynamic> map, String id) {
+    return WaterLog(
+      id: id,
+      timestamp: map['timestamp'] != null ? DateTime.parse(map['timestamp']) : DateTime.now(),
+      amountMl: map['amountMl']?.toInt() ?? 0,
+      drinkType: map['drinkType'] ?? 'water',
+    );
+  }
 }
 
 // ─── WORKOUT ─────────────────────────────────────────────────
-@HiveType(typeId: 3)
-class WorkoutSession extends HiveObject {
-  @HiveField(0) String id;
-  @HiveField(1) String name;
-  @HiveField(2) String type; // strength, cardio, hiit, yoga, flexibility, sports
-  @HiveField(3) DateTime startTime;
-  @HiveField(4) DateTime? endTime;
-  @HiveField(5) int durationMinutes;
-  @HiveField(6) int? caloriesBurned;
-  @HiveField(7) List<ExerciseSet> exercises;
-  @HiveField(8) String? notes;
-  @HiveField(9) int ratingOutOf5;
-  @HiveField(10) String? muscleGroups; // comma-separated
+class WorkoutSession {
+  String id;
+  String name;
+  String type; // strength, cardio, hiit, yoga, flexibility, sports
+  DateTime startTime;
+  DateTime? endTime;
+  int durationMinutes;
+  int? caloriesBurned;
+  List<ExerciseSet> exercises;
+  String? notes;
+  int ratingOutOf5;
+  String? muscleGroups; // comma-separated
 
   WorkoutSession({
     required this.id,
@@ -148,15 +249,46 @@ class WorkoutSession extends HiveObject {
     this.ratingOutOf5 = 0,
     this.muscleGroups,
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'type': type,
+      'startTime': startTime.toIso8601String(),
+      'endTime': endTime?.toIso8601String(),
+      'durationMinutes': durationMinutes,
+      'caloriesBurned': caloriesBurned,
+      'exercises': exercises.map((e) => e.toMap()).toList(),
+      'notes': notes,
+      'ratingOutOf5': ratingOutOf5,
+      'muscleGroups': muscleGroups,
+    };
+  }
+
+  factory WorkoutSession.fromMap(Map<String, dynamic> map, String id) {
+    return WorkoutSession(
+      id: id,
+      name: map['name'] ?? '',
+      type: map['type'] ?? '',
+      startTime: map['startTime'] != null ? DateTime.parse(map['startTime']) : DateTime.now(),
+      endTime: map['endTime'] != null ? DateTime.parse(map['endTime']) : null,
+      durationMinutes: map['durationMinutes']?.toInt() ?? 0,
+      caloriesBurned: map['caloriesBurned']?.toInt(),
+      exercises: (map['exercises'] as List<dynamic>?)?.map((e) => ExerciseSet.fromMap(e)).toList() ?? [],
+      notes: map['notes'],
+      ratingOutOf5: map['ratingOutOf5']?.toInt() ?? 0,
+      muscleGroups: map['muscleGroups'],
+    );
+  }
 }
 
-@HiveType(typeId: 4)
-class ExerciseSet extends HiveObject {
-  @HiveField(0) String exerciseName;
-  @HiveField(1) String exerciseType; // reps, duration, distance
-  @HiveField(2) List<SetEntry> sets;
-  @HiveField(3) String? notes;
-  @HiveField(4) String muscleGroup;
+class ExerciseSet {
+  String exerciseName;
+  String exerciseType; // reps, duration, distance
+  List<SetEntry> sets;
+  String? notes;
+  String muscleGroup;
 
   ExerciseSet({
     required this.exerciseName,
@@ -165,15 +297,34 @@ class ExerciseSet extends HiveObject {
     this.notes,
     this.muscleGroup = '',
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'exerciseName': exerciseName,
+      'exerciseType': exerciseType,
+      'sets': sets.map((s) => s.toMap()).toList(),
+      'notes': notes,
+      'muscleGroup': muscleGroup,
+    };
+  }
+
+  factory ExerciseSet.fromMap(Map<String, dynamic> map) {
+    return ExerciseSet(
+      exerciseName: map['exerciseName'] ?? '',
+      exerciseType: map['exerciseType'] ?? '',
+      sets: (map['sets'] as List<dynamic>?)?.map((s) => SetEntry.fromMap(s)).toList() ?? [],
+      notes: map['notes'],
+      muscleGroup: map['muscleGroup'] ?? '',
+    );
+  }
 }
 
-@HiveType(typeId: 5)
-class SetEntry extends HiveObject {
-  @HiveField(0) int? reps;
-  @HiveField(1) double? weightKg;
-  @HiveField(2) int? durationSeconds;
-  @HiveField(3) double? distanceKm;
-  @HiveField(4) bool isCompleted;
+class SetEntry {
+  int? reps;
+  double? weightKg;
+  int? durationSeconds;
+  double? distanceKm;
+  bool isCompleted;
 
   SetEntry({
     this.reps,
@@ -182,19 +333,38 @@ class SetEntry extends HiveObject {
     this.distanceKm,
     this.isCompleted = false,
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'reps': reps,
+      'weightKg': weightKg,
+      'durationSeconds': durationSeconds,
+      'distanceKm': distanceKm,
+      'isCompleted': isCompleted,
+    };
+  }
+
+  factory SetEntry.fromMap(Map<String, dynamic> map) {
+    return SetEntry(
+      reps: map['reps']?.toInt(),
+      weightKg: map['weightKg']?.toDouble(),
+      durationSeconds: map['durationSeconds']?.toInt(),
+      distanceKm: map['distanceKm']?.toDouble(),
+      isCompleted: map['isCompleted'] ?? false,
+    );
+  }
 }
 
 // ─── SLEEP ───────────────────────────────────────────────────
-@HiveType(typeId: 6)
-class SleepLog extends HiveObject {
-  @HiveField(0) String id;
-  @HiveField(1) DateTime bedTime;
-  @HiveField(2) DateTime wakeTime;
-  @HiveField(3) int qualityOutOf5;
-  @HiveField(4) String? notes;
-  @HiveField(5) List<String> factors; // alcohol, caffeine, exercise, stress, etc.
-  @HiveField(6) bool hadDreams;
-  @HiveField(7) String? mood; // morning mood
+class SleepLog {
+  String id;
+  DateTime bedTime;
+  DateTime wakeTime;
+  int qualityOutOf5;
+  String? notes;
+  List<String> factors; // alcohol, caffeine, exercise, stress, etc.
+  bool hadDreams;
+  String? mood; // morning mood
 
   SleepLog({
     required this.id,
@@ -215,23 +385,48 @@ class SleepLog extends HiveObject {
     final mins = wakeTime.difference(bedTime).inMinutes;
     return '${mins ~/ 60}h ${mins % 60}m';
   }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'bedTime': bedTime.toIso8601String(),
+      'wakeTime': wakeTime.toIso8601String(),
+      'qualityOutOf5': qualityOutOf5,
+      'notes': notes,
+      'factors': factors,
+      'hadDreams': hadDreams,
+      'mood': mood,
+    };
+  }
+
+  factory SleepLog.fromMap(Map<String, dynamic> map, String id) {
+    return SleepLog(
+      id: id,
+      bedTime: map['bedTime'] != null ? DateTime.parse(map['bedTime']) : DateTime.now(),
+      wakeTime: map['wakeTime'] != null ? DateTime.parse(map['wakeTime']) : DateTime.now(),
+      qualityOutOf5: map['qualityOutOf5']?.toInt() ?? 3,
+      notes: map['notes'],
+      factors: List<String>.from(map['factors'] ?? []),
+      hadDreams: map['hadDreams'] ?? false,
+      mood: map['mood'],
+    );
+  }
 }
 
 // ─── WEIGHT ──────────────────────────────────────────────────
-@HiveType(typeId: 7)
-class WeightLog extends HiveObject {
-  @HiveField(0) String id;
-  @HiveField(1) DateTime date;
-  @HiveField(2) double weightKg;
-  @HiveField(3) double? bodyFatPercent;
-  @HiveField(4) double? muscleMassKg;
-  @HiveField(5) double? bmi;
-  @HiveField(6) String? notes;
-  @HiveField(7) String? photoPath;
-  @HiveField(8) double? chestCm;
-  @HiveField(9) double? waistCm;
-  @HiveField(10) double? armCm;
-  @HiveField(11) double? legCm;
+class WeightLog {
+  String id;
+  DateTime date;
+  double weightKg;
+  double? bodyFatPercent;
+  double? muscleMassKg;
+  double? bmi;
+  String? notes;
+  String? photoPath;
+  double? chestCm;
+  double? waistCm;
+  double? armCm;
+  double? legCm;
 
   WeightLog({
     required this.id,
@@ -247,18 +442,51 @@ class WeightLog extends HiveObject {
     this.armCm,
     this.legCm,
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'date': date.toIso8601String(),
+      'weightKg': weightKg,
+      'bodyFatPercent': bodyFatPercent,
+      'muscleMassKg': muscleMassKg,
+      'bmi': bmi,
+      'notes': notes,
+      'photoPath': photoPath,
+      'chestCm': chestCm,
+      'waistCm': waistCm,
+      'armCm': armCm,
+      'legCm': legCm,
+    };
+  }
+
+  factory WeightLog.fromMap(Map<String, dynamic> map, String id) {
+    return WeightLog(
+      id: id,
+      date: map['date'] != null ? DateTime.parse(map['date']) : DateTime.now(),
+      weightKg: map['weightKg']?.toDouble() ?? 0.0,
+      bodyFatPercent: map['bodyFatPercent']?.toDouble(),
+      muscleMassKg: map['muscleMassKg']?.toDouble(),
+      bmi: map['bmi']?.toDouble(),
+      notes: map['notes'],
+      photoPath: map['photoPath'],
+      chestCm: map['chestCm']?.toDouble(),
+      waistCm: map['waistCm']?.toDouble(),
+      armCm: map['armCm']?.toDouble(),
+      legCm: map['legCm']?.toDouble(),
+    );
+  }
 }
 
 // ─── MOOD ────────────────────────────────────────────────────
-@HiveType(typeId: 8)
-class MoodLog extends HiveObject {
-  @HiveField(0) String id;
-  @HiveField(1) DateTime timestamp;
-  @HiveField(2) int moodScore; // 1-5 (terrible to excellent)
-  @HiveField(3) String moodEmoji;
-  @HiveField(4) List<String> emotions; // tags: happy, anxious, calm, etc.
-  @HiveField(5) String? notes;
-  @HiveField(6) List<String> activities; // what you were doing
+class MoodLog {
+  String id;
+  DateTime timestamp;
+  int moodScore; // 1-5 (terrible to excellent)
+  String moodEmoji;
+  List<String> emotions; // tags: happy, anxious, calm, etc.
+  String? notes;
+  List<String> activities; // what you were doing
 
   MoodLog({
     required this.id,
@@ -291,21 +519,44 @@ class MoodLog extends HiveObject {
       default: return 'Okay';
     }
   }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'timestamp': timestamp.toIso8601String(),
+      'moodScore': moodScore,
+      'moodEmoji': moodEmoji,
+      'emotions': emotions,
+      'notes': notes,
+      'activities': activities,
+    };
+  }
+
+  factory MoodLog.fromMap(Map<String, dynamic> map, String id) {
+    return MoodLog(
+      id: id,
+      timestamp: map['timestamp'] != null ? DateTime.parse(map['timestamp']) : DateTime.now(),
+      moodScore: map['moodScore']?.toInt() ?? 3,
+      moodEmoji: map['moodEmoji'] ?? '😐',
+      emotions: List<String>.from(map['emotions'] ?? []),
+      notes: map['notes'],
+      activities: List<String>.from(map['activities'] ?? []),
+    );
+  }
 }
 
 // ─── CALORIE / NUTRITION ────────────────────────────────────
-@HiveType(typeId: 9)
-class NutritionLog extends HiveObject {
-  @HiveField(0) String id;
-  @HiveField(1) DateTime date;
-  @HiveField(2) String mealType; // breakfast, lunch, dinner, snack
-  @HiveField(3) String foodName;
-  @HiveField(4) double calories;
-  @HiveField(5) double? proteinG;
-  @HiveField(6) double? carbsG;
-  @HiveField(7) double? fatG;
-  @HiveField(8) double servingSize;
-  @HiveField(9) String servingUnit; // g, ml, piece, cup
+class NutritionLog {
+  String id;
+  DateTime date;
+  String mealType; // breakfast, lunch, dinner, snack
+  String foodName;
+  double calories;
+  double? proteinG;
+  double? carbsG;
+  double? fatG;
+  double servingSize;
+  String servingUnit; // g, ml, piece, cup
 
   NutritionLog({
     required this.id,
@@ -319,17 +570,46 @@ class NutritionLog extends HiveObject {
     this.servingSize = 100,
     this.servingUnit = 'g',
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'date': date.toIso8601String(),
+      'mealType': mealType,
+      'foodName': foodName,
+      'calories': calories,
+      'proteinG': proteinG,
+      'carbsG': carbsG,
+      'fatG': fatG,
+      'servingSize': servingSize,
+      'servingUnit': servingUnit,
+    };
+  }
+
+  factory NutritionLog.fromMap(Map<String, dynamic> map, String id) {
+    return NutritionLog(
+      id: id,
+      date: map['date'] != null ? DateTime.parse(map['date']) : DateTime.now(),
+      mealType: map['mealType'] ?? 'snack',
+      foodName: map['foodName'] ?? '',
+      calories: map['calories']?.toDouble() ?? 0.0,
+      proteinG: map['proteinG']?.toDouble(),
+      carbsG: map['carbsG']?.toDouble(),
+      fatG: map['fatG']?.toDouble(),
+      servingSize: map['servingSize']?.toDouble() ?? 100.0,
+      servingUnit: map['servingUnit'] ?? 'g',
+    );
+  }
 }
 
 // ─── STEP / ACTIVITY ─────────────────────────────────────────
-@HiveType(typeId: 10)
-class StepLog extends HiveObject {
-  @HiveField(0) String id;
-  @HiveField(1) DateTime date;
-  @HiveField(2) int steps;
-  @HiveField(3) double? distanceKm;
-  @HiveField(4) int? caloriesBurned;
-  @HiveField(5) int? activeMinutes;
+class StepLog {
+  String id;
+  DateTime date;
+  int steps;
+  double? distanceKm;
+  int? caloriesBurned;
+  int? activeMinutes;
 
   StepLog({
     required this.id,
@@ -339,6 +619,28 @@ class StepLog extends HiveObject {
     this.caloriesBurned,
     this.activeMinutes,
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'date': date.toIso8601String(),
+      'steps': steps,
+      'distanceKm': distanceKm,
+      'caloriesBurned': caloriesBurned,
+      'activeMinutes': activeMinutes,
+    };
+  }
+
+  factory StepLog.fromMap(Map<String, dynamic> map, String id) {
+    return StepLog(
+      id: id,
+      date: map['date'] != null ? DateTime.parse(map['date']) : DateTime.now(),
+      steps: map['steps']?.toInt() ?? 0,
+      distanceKm: map['distanceKm']?.toDouble(),
+      caloriesBurned: map['caloriesBurned']?.toInt(),
+      activeMinutes: map['activeMinutes']?.toInt(),
+    );
+  }
 }
 
 // ─── SUBSCRIPTION ────────────────────────────────────────────
@@ -421,13 +723,12 @@ class SubscriptionPlan {
 }
 
 // ─── WORKOUT TEMPLATE ────────────────────────────────────────
-@HiveType(typeId: 12)
-class WorkoutTemplate extends HiveObject {
-  @HiveField(0) String id;
-  @HiveField(1) String name;
-  @HiveField(2) String type;
-  @HiveField(3) List<ExerciseSet> exercises;
-  @HiveField(4) String? notes;
+class WorkoutTemplate {
+  String id;
+  String name;
+  String type;
+  List<ExerciseSet> exercises;
+  String? notes;
 
   WorkoutTemplate({
     required this.id,
@@ -436,4 +737,24 @@ class WorkoutTemplate extends HiveObject {
     required this.exercises,
     this.notes,
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'type': type,
+      'exercises': exercises.map((e) => e.toMap()).toList(),
+      'notes': notes,
+    };
+  }
+
+  factory WorkoutTemplate.fromMap(Map<String, dynamic> map, String id) {
+    return WorkoutTemplate(
+      id: id,
+      name: map['name'] ?? '',
+      type: map['type'] ?? '',
+      exercises: (map['exercises'] as List<dynamic>?)?.map((e) => ExerciseSet.fromMap(e)).toList() ?? [],
+      notes: map['notes'],
+    );
+  }
 }

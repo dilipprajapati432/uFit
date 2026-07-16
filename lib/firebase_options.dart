@@ -17,29 +17,17 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for ios - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -58,5 +46,46 @@ class DefaultFirebaseOptions {
     messagingSenderId: '605281237568',
     projectId: 'ufit-3771b',
     storageBucket: 'ufit-3771b.firebasestorage.app',
+  );
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyCwv6Jzq-4PhD-2M7ehiEYeoklbVKPiAps',
+    appId: '1:605281237568:web:52dd059957ea21291cbda5',
+    messagingSenderId: '605281237568',
+    projectId: 'ufit-3771b',
+    authDomain: 'ufit-3771b.firebaseapp.com',
+    storageBucket: 'ufit-3771b.firebasestorage.app',
+    measurementId: 'G-SRBK14KNXH',
+  );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyC4gpJLDrXifk2DunuuxnBoXtIHRULmghE',
+    appId: '1:605281237568:ios:1edb1e760885b25c1cbda5',
+    messagingSenderId: '605281237568',
+    projectId: 'ufit-3771b',
+    storageBucket: 'ufit-3771b.firebasestorage.app',
+    androidClientId: '605281237568-5v0t1n3bp3ksgru7qtro54fhvh1a8561.apps.googleusercontent.com',
+    iosClientId: '605281237568-ffq6g8l8df2oo0jgpjr5n2ehectnv0b0.apps.googleusercontent.com',
+    iosBundleId: 'com.example.ufit',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyC4gpJLDrXifk2DunuuxnBoXtIHRULmghE',
+    appId: '1:605281237568:ios:d8962678a0a937a21cbda5',
+    messagingSenderId: '605281237568',
+    projectId: 'ufit-3771b',
+    storageBucket: 'ufit-3771b.firebasestorage.app',
+    androidClientId: '605281237568-5v0t1n3bp3ksgru7qtro54fhvh1a8561.apps.googleusercontent.com',
+    iosClientId: '605281237568-24cba3442ubbjq08snv7qp6vpquobqhi.apps.googleusercontent.com',
+    iosBundleId: 'com.fittrack.ufit',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyCwv6Jzq-4PhD-2M7ehiEYeoklbVKPiAps',
+    appId: '1:605281237568:web:f6a4ec52645820fb1cbda5',
+    messagingSenderId: '605281237568',
+    projectId: 'ufit-3771b',
+    authDomain: 'ufit-3771b.firebaseapp.com',
+    storageBucket: 'ufit-3771b.firebasestorage.app',
+    measurementId: 'G-7WS8YVN929',
   );
 }

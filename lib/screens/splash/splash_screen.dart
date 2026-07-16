@@ -15,11 +15,8 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Navigate away after a short delay
-    Future.delayed(const Duration(milliseconds: 2500), () {
+    Future.delayed(const Duration(milliseconds: 1000), () {
       if (mounted) {
-        // The router's redirect logic will automatically send them to 
-        // /dashboard if logged in, or /welcome if not.
         context.go('/welcome');
       }
     });
@@ -28,59 +25,50 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.darkBg,
+      backgroundColor: Colors.black,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // The main animated icon
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: AppColors.primaryGradient,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.5),
-                    blurRadius: 30,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
+            // Icon shown immediately — no animation, matches native splash
+            ClipRRect(
+              borderRadius: BorderRadius.circular(32),
               child: Image.asset(
                 'assets/images/ufit_icon_new.png',
-                width: 80,
-                height: 80,
+                width: 140,
+                height: 140,
               ),
-            )
-            .animate()
-            .scale(duration: 600.ms, curve: Curves.easeOutBack)
-            .fadeIn(duration: 400.ms),
+            ),
             
             const SizedBox(height: 32),
             
-            RichText(
-              text: const TextSpan(
-                style: TextStyle(
-                  fontSize: 36,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.5,
+            // Only the text animates in
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'u',
+                  style: TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5,
+                    color: AppColors.accentOrange,
+                  ),
                 ),
-                children: [
-                  TextSpan(
-                    text: 'u',
-                    style: TextStyle(color: AppColors.primary),
+                Text(
+                  'Fit',
+                  style: TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5,
+                    color: Colors.white,
                   ),
-                  TextSpan(
-                    text: 'Fit',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ],
-              ),
+                ),
+              ],
             )
             .animate()
-            .fadeIn(delay: 400.ms, duration: 600.ms)
-            .slideY(begin: 0.5, end: 0, delay: 400.ms, duration: 600.ms, curve: Curves.easeOutCubic),
+            .fadeIn(delay: 200.ms, duration: 500.ms)
+            .slideY(begin: 0.3, end: 0, delay: 200.ms, duration: 500.ms, curve: Curves.easeOutCubic),
           ],
         ),
       ),

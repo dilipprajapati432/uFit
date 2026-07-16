@@ -65,7 +65,7 @@ class HelpCenterScreen extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size(double.infinity, 48),
                     ),
-                    child: const Text('Email Support (support@ufit.app)'),
+                    child: const Text('Email Support (support.ufit@gmail.com)'),
                   ),
                 ],
               ),

@@ -9,6 +9,7 @@ import '../../providers/app_providers.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
 import '../../services/ai_service.dart';
+import '../../providers/auth_provider.dart';
 import 'package:ufit/theme/theme_ext.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -24,6 +25,8 @@ class DashboardScreen extends ConsumerWidget {
     final weight = ref.watch(weightProvider);
     final mood = ref.watch(moodProvider);
     final isPremium = ref.watch(premiumProvider);
+    final firebaseUser = ref.watch(currentFirebaseUserProvider);
+    final steps = ref.watch(stepsProvider);
 
     List<_ActivityItem> recentActivities = [];
     for (var w in workouts) {
@@ -38,6 +41,9 @@ class DashboardScreen extends ConsumerWidget {
     for (var m in mood) {
       recentActivities.add(_ActivityItem(title: 'Mood', subtitle: MoodLog.emojiForScore(m.moodScore), icon: '😊', color: AppColors.moodColor, timestamp: m.timestamp));
     }
+    for (var step in steps) {
+      recentActivities.add(_ActivityItem(title: 'Steps', subtitle: '${step.steps} steps', icon: '🚶', color: Colors.blueAccent, timestamp: step.date));
+    }
     recentActivities.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     final displayActivities = recentActivities.take(5).toList();
 
@@ -48,6 +54,8 @@ class DashboardScreen extends ConsumerWidget {
     final completedHabits = ref.read(habitsProvider.notifier).getTodayCompletedCount();
     final waterGoal = user?.dailyWaterGoalMl ?? 2500;
     final waterToday = water.fold<int>(0, (s, l) => s + l.amountMl);
+    final stepsGoal = user?.dailyStepsGoal ?? 10000;
+    final stepsToday = ref.read(stepsProvider.notifier).todayTotalSteps;
 
     return Scaffold(
       backgroundColor: context.bg,
@@ -81,6 +89,19 @@ class DashboardScreen extends ConsumerWidget {
               ],
             ),
             actions: [
+              GestureDetector(
+                onTap: () => context.push('/analytics'),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 12),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: context.surface,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: context.border),
+                  ),
+                  child: Icon(Icons.bar_chart_rounded, color: context.text, size: 20),
+                ),
+              ),
               if (!isPremium)
                 GestureDetector(
                   onTap: () => context.push('/premium'),
@@ -106,28 +127,16 @@ class DashboardScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
-                )
-              else
-                Container(
-                  margin: const EdgeInsets.only(right: 16),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text('✨ Pro', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
                 ),
               GestureDetector(
                 onTap: () => context.push('/profile'),
                 child: Container(
                   margin: const EdgeInsets.only(right: 16),
-                  child: CircleAvatar(
+                  child: UserAvatar(
                     radius: 18,
-                    backgroundColor: AppColors.primary.withOpacity(0.2),
-                    child: Text(
-                      user?.name.isNotEmpty == true ? (user?.name[0].toUpperCase() ?? 'U') : 'U',
-                      style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700),
-                    ),
+                    photoUrl: firebaseUser?.photoURL,
+                    initial: user?.name.isNotEmpty == true ? (user?.name[0].toUpperCase() ?? 'U') : 'U',
+                    isPremium: isPremium,
                   ),
                 ),
               ),
@@ -153,6 +162,8 @@ class DashboardScreen extends ConsumerWidget {
                   habitsTotal: todayHabits.length,
                   waterMl: waterToday,
                   waterGoalMl: waterGoal,
+                  stepsToday: stepsToday,
+                  stepsGoal: stepsGoal,
                   workoutsThisWeek: workouts.where((s) { final now = DateTime.now(); final weekStart = now.subtract(Duration(days: now.weekday - 1)); return s.startTime.isAfter(weekStart); }).length,
                 ).animate().fadeIn().slideY(begin: 0.2),
                 SizedBox(height: 24),
@@ -160,27 +171,21 @@ class DashboardScreen extends ConsumerWidget {
                 // 1. Quick Log Row
                 const SectionHeader(title: 'Quick Log'),
                 SizedBox(height: 8),
-                Column(
+                GridView.count(
+                  padding: EdgeInsets.zero,
+                  crossAxisCount: 3,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  childAspectRatio: 1.05,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(child: _QuickLogButton(icon: '💧', label: 'Water', color: AppColors.waterColor, onTap: () => context.push('/water'))),
-                        SizedBox(width: 10),
-                        Expanded(child: _QuickLogButton(icon: '💪', label: 'Workout', color: AppColors.workoutColor, onTap: () => context.push('/workout'))),
-                        SizedBox(width: 10),
-                        Expanded(child: _QuickLogButton(icon: '🌙', label: 'Sleep', color: AppColors.sleepColor, onTap: () => context.push('/sleep'))),
-                      ],
-                    ),
-                    SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(child: _QuickLogButton(icon: '😊', label: 'Mood', color: AppColors.moodColor, onTap: () => context.push('/mood'))),
-                        SizedBox(width: 10),
-                        Expanded(child: _QuickLogButton(icon: '⚖️', label: 'Weight', color: AppColors.weightColor, onTap: () => context.push('/weight'))),
-                        SizedBox(width: 10),
-                        Expanded(child: _QuickLogButton(icon: '✅', label: 'Habits', color: AppColors.habitColor, onTap: () => context.push('/habits'))),
-                      ],
-                    ),
+                    _QuickLogButton(icon: '💧', label: 'Water', color: AppColors.waterColor, onTap: () => context.push('/water')),
+                    _QuickLogButton(icon: '🥗', label: 'Meals', color: Colors.orange, onTap: () => context.push('/meals')),
+                    _QuickLogButton(icon: '🚶', label: 'Steps', color: Colors.blueAccent, onTap: () => context.push('/steps')),
+                    _QuickLogButton(icon: '😊', label: 'Mood', color: AppColors.moodColor, onTap: () => context.push('/mood')),
+                    _QuickLogButton(icon: '⚖️', label: 'Weight', color: AppColors.weightColor, onTap: () => context.push('/weight')),
+                    _QuickLogButton(icon: '💪', label: 'Workout', color: AppColors.workoutColor, onTap: () => context.push('/workout')),
                   ],
                 ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.2),
                 SizedBox(height: 24),
@@ -249,6 +254,13 @@ class DashboardScreen extends ConsumerWidget {
                       value: mood.isEmpty ? '--' : MoodLog.emojiForScore(mood.first.moodScore),
                       color: AppColors.moodColor,
                       icon: Icons.sentiment_satisfied_rounded,
+                    ),
+                    StatTile(
+                      label: 'Steps Today',
+                      value: stepsToday.toString(),
+                      unit: 'steps',
+                      color: Colors.blueAccent,
+                      icon: Icons.directions_walk_rounded,
                     ),
                   ],
                 ).animate().fadeIn(delay: 300.ms),
@@ -415,6 +427,8 @@ class _DailySummaryCard extends StatelessWidget {
   final int waterMl;
   final int waterGoalMl;
   final int workoutsThisWeek;
+  final int stepsToday;
+  final int stepsGoal;
 
   const _DailySummaryCard({
     required this.habitsCompleted,
@@ -422,13 +436,16 @@ class _DailySummaryCard extends StatelessWidget {
     required this.waterMl,
     required this.waterGoalMl,
     required this.workoutsThisWeek,
+    required this.stepsToday,
+    required this.stepsGoal,
   });
 
   @override
   Widget build(BuildContext context) {
     final habitProgress = habitsTotal == 0 ? 0.0 : habitsCompleted / habitsTotal;
     final waterProgress = waterGoalMl == 0 ? 0.0 : waterMl / waterGoalMl;
-    final overallProgress = (habitProgress + waterProgress.clamp(0.0, 1.0)) / 2;
+    final stepProgress = stepsGoal == 0 ? 0.0 : stepsToday / stepsGoal;
+    final overallProgress = (habitProgress + waterProgress.clamp(0.0, 1.0) + stepProgress.clamp(0.0, 1.0)) / 3;
 
     return Container(
       decoration: BoxDecoration(
@@ -497,18 +514,25 @@ class _DailySummaryCard extends StatelessWidget {
                 value: '$habitsCompleted/$habitsTotal',
                 progress: habitProgress,
               ),
-              SizedBox(width: 12),
+              SizedBox(width: 8),
               _ProgressItem(
                 icon: '💧',
                 label: 'Water',
                 value: '${waterMl}ml',
                 progress: waterProgress,
               ),
-              SizedBox(width: 12),
+              SizedBox(width: 8),
+              _ProgressItem(
+                icon: '🚶',
+                label: 'Steps',
+                value: '$stepsToday',
+                progress: stepProgress,
+              ),
+              SizedBox(width: 8),
               _ProgressItem(
                 icon: '💪',
                 label: 'Workouts',
-                value: '$workoutsThisWeek this week',
+                value: '$workoutsThisWeek /wk',
                 progress: (workoutsThisWeek / 5).clamp(0.0, 1.0),
               ),
             ],
@@ -553,7 +577,11 @@ class _ProgressItem extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
             SizedBox(height: 2),
-            Text(label, style: TextStyle(color: Colors.white70, fontSize: 10)),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(label, style: TextStyle(color: Colors.white70, fontSize: 10)),
+            ),
             SizedBox(height: 6),
             LinearProgressIndicator(
               value: progress.clamp(0.0, 1.0),
@@ -587,13 +615,14 @@ class _QuickLogButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
           color: color.withOpacity(0.12),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: color.withOpacity(0.3)),
         ),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(icon, style: TextStyle(fontSize: 22)),
             SizedBox(height: 4),

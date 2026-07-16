@@ -21,7 +21,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _obscure = true;
-  bool _isLoading = false;
+  bool _isEmailLoading = false;
+  bool _isGoogleLoading = false;
   String? _error;
 
   @override
@@ -36,26 +37,67 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 20),
+                const SizedBox(height: 8),
 
                 // Back button
                 IconButton(
-                  onPressed: () => context.pop(),
+                  onPressed: () => context.canPop() ? context.pop() : context.go('/welcome'),
                   icon: const Icon(Icons.arrow_back_rounded),
                   style: IconButton.styleFrom(
                     backgroundColor: context.card,
                     padding: const EdgeInsets.all(10),
                   ),
                 ).animate().fadeIn(),
-                const SizedBox(height: 32),
+                const SizedBox(height: 4),
+
+                // Branded Header (Logo + App Name)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.asset(
+                        'assets/images/ufit_icon_new.png',
+                        width: 48,
+                        height: 48,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    RichText(
+                      text: TextSpan(
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -1.5,
+                          color: context.text,
+                        ),
+                        children: const [
+                          TextSpan(text: 'u', style: TextStyle(color: AppColors.accentOrange)),
+                          TextSpan(text: 'Fit'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ).animate().fadeIn(delay: 50.ms),
+                const SizedBox(height: 8),
 
                 // Header
-                Text('Welcome back', style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800))
-                    .animate().fadeIn(delay: 100.ms).slideX(begin: -0.2),
+                Center(
+                  child: Text(
+                    'Welcome back',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.2),
                 const SizedBox(height: 8),
-                Text('Sign in to continue your journey', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: context.textSecondary))
-                    .animate().fadeIn(delay: 150.ms),
-                const SizedBox(height: 40),
+                Center(
+                  child: Text(
+                    'Sign in to continue your journey',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: context.textSecondary),
+                  ),
+                ).animate().fadeIn(delay: 150.ms),
+                const SizedBox(height: 24),
 
                 // Error banner
                 if (_error != null)
@@ -112,25 +154,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     return null;
                   },
                 ).animate().fadeIn(delay: 250.ms).slideY(begin: 0.2),
-                const SizedBox(height: 12),
+                const SizedBox(height: 4),
 
                 // Forgot password
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: _forgotPassword,
-                    child: const Text('Forgot password?', style: TextStyle(color: AppColors.primary)),
+                    onPressed: () => context.push('/forgot-password'),
+                    style: TextButton.styleFrom(
+                      minimumSize: Size.zero,
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: const Text('Forgot password?', style: TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600)),
                   ),
                 ).animate().fadeIn(delay: 300.ms),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
 
                 // Sign In button
                 SizedBox(
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _signIn,
-                    child: _isLoading
+                    onPressed: (_isEmailLoading || _isGoogleLoading) ? null : _signIn,
+                    child: _isEmailLoading
                         ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                         : const Text('Sign In', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                   ),
@@ -155,25 +202,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   width: double.infinity,
                   height: 56,
                   child: OutlinedButton(
-                    onPressed: _isLoading ? null : _signInWithGoogle,
+                    onPressed: (_isEmailLoading || _isGoogleLoading) ? null : _signInWithGoogle,
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: context.border),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Google G logo using text (replace with SVG asset if you have one)
-                        Container(
-                          width: 24,
-                          height: 24,
-                          decoration: const BoxDecoration(shape: BoxShape.circle),
-                          child: const Text('G', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
-                        ),
-                        const SizedBox(width: 12),
-                        Text('Continue with Google', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: context.text)),
-                      ],
-                    ),
+                    child: _isGoogleLoading
+                        ? SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(color: context.text, strokeWidth: 2),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 24,
+                                height: 24,
+                                decoration: const BoxDecoration(shape: BoxShape.circle),
+                                child: const Text('G', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                              ),
+                              const SizedBox(width: 12),
+                              Text('Continue with Google', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: context.text)),
+                            ],
+                          ),
                   ),
                 ).animate().fadeIn(delay: 450.ms).slideY(begin: 0.2),
                 const SizedBox(height: 36),
@@ -184,7 +236,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   children: [
                     Text("Don't have an account? ", style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.textSecondary)),
                     GestureDetector(
-                      onTap: () => context.go('/signup'),
+                      onTap: () => context.replace('/signup'),
                       child: const Text('Sign Up', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
                     ),
                   ],
@@ -199,55 +251,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _signIn() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() { _isLoading = true; _error = null; });
+    setState(() { _isEmailLoading = true; _error = null; });
     try {
       await AuthService.signInWithEmail(
         email: _emailCtrl.text.trim(),
         password: _passCtrl.text,
       );
-      // Router redirect handles navigation automatically
     } on FirebaseAuthException catch (e) {
       setState(() => _error = AuthService.friendlyError(e));
     } catch (e) {
       setState(() => _error = 'Something went wrong. Please try again.');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _isEmailLoading = false);
     }
   }
 
   Future<void> _signInWithGoogle() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() { _isGoogleLoading = true; _error = null; });
     try {
-      await AuthService.signInWithGoogle();
+      await AuthService.signInWithGoogle(isSignUp: false);
     } on FirebaseAuthException catch (e) {
       setState(() => _error = AuthService.friendlyError(e));
     } catch (e) {
       setState(() => _error = 'Google Sign-In failed. Please try again.');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _isGoogleLoading = false);
     }
   }
 
-  Future<void> _forgotPassword() async {
-    final email = _emailCtrl.text.trim();
-    if (email.isEmpty) {
-      setState(() => _error = 'Enter your email above first, then tap Forgot Password.');
-      return;
-    }
-    try {
-      await AuthService.sendPasswordReset(email);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Reset link sent to $email'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-      }
-    } on FirebaseAuthException catch (e) {
-      setState(() => _error = AuthService.friendlyError(e));
-    }
-  }
+
 
   @override
   void dispose() {

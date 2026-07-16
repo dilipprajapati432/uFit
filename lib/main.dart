@@ -6,8 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app_router.dart';
 import 'firebase_options.dart';
 import 'providers/app_providers.dart';
+import 'services/payment_service.dart';
 import 'services/notification_service.dart';
-import 'services/storage_service.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
@@ -22,20 +22,37 @@ void main() async {
   // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Initialize local storage
-  await StorageService.init();
+  // Initialize notifications asynchronously in the background
+  NotificationService.init();
 
-  // Initialize notifications
-  await NotificationService.init();
-
-  runApp(const ProviderScope(child: UFitApp()));
+  runApp(
+    const ProviderScope(
+      child: UFitApp(),
+    ),
+  );
 }
 
-class UFitApp extends ConsumerWidget {
+class UFitApp extends ConsumerStatefulWidget {
   const UFitApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<UFitApp> createState() => _UFitAppState();
+}
+
+class _UFitAppState extends ConsumerState<UFitApp> {
+  @override
+  void initState() {
+    super.initState();
+    PaymentService.initIAP(ref);
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
     final isDark = ref.watch(themeProvider);
 

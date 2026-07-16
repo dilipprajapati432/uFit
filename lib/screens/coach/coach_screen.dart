@@ -4,7 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../services/ai_service.dart';
 import '../../theme/app_theme.dart';
 import 'package:ufit/theme/theme_ext.dart';
-import 'package:hive/hive.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 class CoachScreen extends StatefulWidget {
@@ -26,9 +26,9 @@ class _CoachScreenState extends State<CoachScreen> {
     _loadMessages();
   }
 
-  void _loadMessages() {
-    final box = Hive.box('settings');
-    final stored = box.get('coach_messages');
+  void _loadMessages() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString('coach_messages');
     if (stored != null) {
       try {
         final List<dynamic> decoded = jsonDecode(stored);
@@ -52,18 +52,21 @@ class _CoachScreenState extends State<CoachScreen> {
       }
     }
     
-    // Scroll to bottom after initial render
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollCtrl.hasClients) {
-        _scrollCtrl.jumpTo(_scrollCtrl.position.maxScrollExtent);
-      }
-    });
+    if (mounted) {
+      setState(() {});
+      // Scroll to bottom after initial render
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollCtrl.hasClients) {
+          _scrollCtrl.jumpTo(_scrollCtrl.position.maxScrollExtent);
+        }
+      });
+    }
   }
 
-  void _saveMessages() {
-    final box = Hive.box('settings');
+  void _saveMessages() async {
+    final prefs = await SharedPreferences.getInstance();
     final toSave = _messages.length > 50 ? _messages.sublist(_messages.length - 50) : _messages;
-    box.put('coach_messages', jsonEncode(toSave));
+    prefs.setString('coach_messages', jsonEncode(toSave));
   }
 
   Future<void> _sendMessage() async {

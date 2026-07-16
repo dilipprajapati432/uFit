@@ -10,6 +10,8 @@ import '../../providers/app_providers.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
 import 'package:ufit/theme/theme_ext.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/notification_service.dart';
 
 class SleepScreen extends ConsumerWidget {
   const SleepScreen({super.key});
@@ -262,6 +264,25 @@ class _LogSleepFormState extends ConsumerState<_LogSleepForm> {
   final _allFactors = ['Caffeine', 'Alcohol', 'Exercise', 'Stress', 'Screen time', 'Late meal'];
 
   @override
+  void initState() {
+    super.initState();
+    _loadInitialTimes();
+  }
+
+  Future<void> _loadInitialTimes() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final h = prefs.getInt('sleep_reminder_hour') ?? 22;
+      final m = prefs.getInt('sleep_reminder_minute') ?? 30;
+      if (mounted) {
+        setState(() {
+          _bedTime = TimeOfDay(hour: h, minute: m);
+        });
+      }
+    } catch (_) {}
+  }
+
+  @override
   Widget build(BuildContext context) {
     final duration = _calculateDuration();
 
@@ -280,7 +301,23 @@ class _LogSleepFormState extends ConsumerState<_LogSleepForm> {
                 time: _bedTime,
                 icon: '🛏️',
                 onTap: () async {
-                  final t = await showTimePicker(context: context, initialTime: _bedTime);
+                  final t = await showTimePicker(
+                    context: context,
+                    initialTime: _bedTime,
+                    builder: (context, child) {
+                      return Theme(
+                        data: Theme.of(context).copyWith(
+                          colorScheme: ColorScheme.dark(
+                            primary: AppColors.sleepColor,
+                            onPrimary: Colors.white,
+                            surface: context.card,
+                            onSurface: context.text,
+                          ),
+                        ),
+                        child: child!,
+                      );
+                    },
+                  );
                   if (t != null) setState(() => _bedTime = t);
                 },
               ),
@@ -292,7 +329,23 @@ class _LogSleepFormState extends ConsumerState<_LogSleepForm> {
                 time: _wakeTime,
                 icon: '☀️',
                 onTap: () async {
-                  final t = await showTimePicker(context: context, initialTime: _wakeTime);
+                  final t = await showTimePicker(
+                    context: context,
+                    initialTime: _wakeTime,
+                    builder: (context, child) {
+                      return Theme(
+                        data: Theme.of(context).copyWith(
+                          colorScheme: ColorScheme.dark(
+                            primary: AppColors.sleepColor,
+                            onPrimary: Colors.white,
+                            surface: context.card,
+                            onSurface: context.text,
+                          ),
+                        ),
+                        child: child!,
+                      );
+                    },
+                  );
                   if (t != null) setState(() => _wakeTime = t);
                 },
               ),
@@ -405,7 +458,7 @@ class _LogSleepFormState extends ConsumerState<_LogSleepForm> {
     }
   }
 
-  void _save() {
+  void _save() async {
     final now = DateTime.now();
     var bed = DateTime(now.year, now.month, now.day, _bedTime.hour, _bedTime.minute).subtract(const Duration(days: 1));
     var wake = DateTime(now.year, now.month, now.day, _wakeTime.hour, _wakeTime.minute);
@@ -418,6 +471,18 @@ class _LogSleepFormState extends ConsumerState<_LogSleepForm> {
       factors: _factors,
     );
     ref.read(sleepProvider.notifier).addLog(log);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('sleep_reminder_hour', _bedTime.hour);
+      await prefs.setInt('sleep_reminder_minute', _bedTime.minute);
+
+      final remindersOn = prefs.getBool('sleep_reminders_on') ?? false;
+      if (remindersOn) {
+        await NotificationService.scheduleSleepReminder(_bedTime.hour, _bedTime.minute);
+      }
+    } catch (_) {}
+
     if (mounted) Navigator.pop(context);
   }
 }

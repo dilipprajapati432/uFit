@@ -40,7 +40,7 @@ class AuthService {
   }
 
   // ── Google Sign-In ────────────────────────────────────────
-  static Future<UserCredential?> signInWithGoogle() async {
+  static Future<UserCredential?> signInWithGoogle({bool isSignUp = false}) async {
     try {
       final googleUser = await _google.signIn();
       if (googleUser == null) return null; // user cancelled
@@ -52,8 +52,19 @@ class AuthService {
       );
       final cred = await _auth.signInWithCredential(credential);
 
-      // Save to Firestore if new user
-      if (cred.additionalUserInfo?.isNewUser == true) {
+      // Block registration if they are trying to SIGN IN
+      if (cred.additionalUserInfo?.isNewUser == true && !isSignUp) {
+        await cred.user?.delete();
+        await _google.signOut().catchError((_) {});
+        await _auth.signOut();
+        throw FirebaseAuthException(
+          code: 'user-not-found',
+          message: 'No account found. Please register first.',
+        );
+      }
+
+      // Save to Firestore if new user registering
+      if (cred.additionalUserInfo?.isNewUser == true && isSignUp) {
         await _saveUserToFirestore(
           cred.user!,
           name: googleUser.displayName ?? 'User',
@@ -102,9 +113,16 @@ class AuthService {
   static Future<void> deleteAccount() async {
     final uid = _auth.currentUser?.uid;
     if (uid != null) {
+      // Delete Auth account first. If it fails (e.g. requires re-authentication), 
+      // it throws here and Firestore profile is safely preserved.
+      await _auth.currentUser?.delete();
+      
+      // Delete Firestore document only after successful Auth deletion
       await _db.collection('users').doc(uid).delete();
+
+      // Clear Google Sign-In cache if they were signed in with Google
+      await _google.signOut().catchError((_) {});
     }
-    await _auth.currentUser?.delete();
   }
 
   // ── Firestore ─────────────────────────────────────────────
@@ -134,7 +152,8 @@ class AuthService {
   // ── Helpers ───────────────────────────────────────────────
   static String friendlyError(FirebaseAuthException e) {
     switch (e.code) {
-      case 'user-not-found': return 'No account found with this email.';
+      case 'user-not-found': return 'No account found with this email. Please register first.';
+      case 'invalid-credential': return 'Invalid credentials. Please verify your details or register first.';
       case 'wrong-password': return 'Incorrect password. Try again.';
       case 'email-already-in-use': return 'An account with this email already exists.';
       case 'weak-password': return 'Password must be at least 6 characters.';

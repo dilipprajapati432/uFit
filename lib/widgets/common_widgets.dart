@@ -464,3 +464,83 @@ Future<T?> showAppBottomSheet<T>({
     ),
   );
 }
+
+// ─── USER AVATAR ─────────────────────────────────────────────
+class UserAvatar extends StatelessWidget {
+  final String? photoUrl;
+  final String initial;
+  final double radius;
+  final bool isPremium;
+
+  const UserAvatar({
+    super.key,
+    required this.photoUrl,
+    required this.initial,
+    this.radius = 28,
+    this.isPremium = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: isPremium
+                ? Border.all(
+                    color: AppColors.accentYellow,
+                    width: 2.5,
+                  )
+                : null,
+            boxShadow: isPremium
+                ? [
+                    BoxShadow(
+                      color: AppColors.accentYellow.withOpacity(0.3),
+                      blurRadius: 10,
+                      spreadRadius: 1,
+                    )
+                  ]
+                : null,
+          ),
+          child: CircleAvatar(
+            radius: radius,
+            backgroundColor: AppColors.primary.withOpacity(0.2),
+            backgroundImage: photoUrl != null ? NetworkImage(photoUrl!) : null,
+            child: photoUrl == null
+                ? Text(
+                    initial,
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: radius * 0.8,
+                    ),
+                  )
+                : null,
+          ),
+        ),
+        if (isPremium)
+          Positioned(
+            top: -6,
+            right: -8,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: context.surface,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  )
+                ],
+              ),
+              child: const Text('👑', style: TextStyle(fontSize: 16)),
+            ),
+          ),
+      ],
+    );
+  }
+}

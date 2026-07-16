@@ -6,15 +6,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../providers/app_providers.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/notification_service.dart';
-import '../../services/storage_service.dart';
 import '../../services/export_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
 import 'package:ufit/theme/theme_ext.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -28,6 +29,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _waterRemindersOn = false;
   bool _habitRemindersOn = false;
   bool _sleepReminderOn = false;
+  int _sleepHour = 22;
+  int _sleepMinute = 30;
+  int _waterStartHour = 8;
+  int _waterStartMinute = 0;
+  int _waterEndHour = 22;
+  int _waterEndMinute = 0;
+  int _waterIntervalHours = 2;
+
+  String _formatTimeOfDay(int hour, int minute) {
+    final time = TimeOfDay(hour: hour, minute: minute);
+    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    final hourStr = time.hourOfPeriod == 0 ? '12' : time.hourOfPeriod.toString();
+    final minStr = time.minute.toString().padLeft(2, '0');
+    return '$hourStr:$minStr $period';
+  }
 
   @override
   void initState() {
@@ -50,8 +66,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (mounted) setState(() => _appVersion = '${info.version} (${info.buildNumber})');
   }
 
-  void _loadNotifPrefs() {
-    // Load from shared prefs in real app; defaulting to false here
+  Future<void> _loadNotifPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _waterRemindersOn = prefs.getBool('water_reminders_on') ?? false;
+        _habitRemindersOn = prefs.getBool('habit_reminders_on') ?? false;
+        _sleepReminderOn = prefs.getBool('sleep_reminders_on') ?? false;
+        _sleepHour = prefs.getInt('sleep_reminder_hour') ?? 22;
+        _sleepMinute = prefs.getInt('sleep_reminder_minute') ?? 30;
+        _waterStartHour = prefs.getInt('water_start_hour') ?? 8;
+        _waterStartMinute = prefs.getInt('water_start_minute') ?? 0;
+        _waterEndHour = prefs.getInt('water_end_hour') ?? 22;
+        _waterEndMinute = prefs.getInt('water_end_minute') ?? 0;
+        _waterIntervalHours = prefs.getInt('water_interval_hours') ?? 2;
+      });
+    }
+  }
+
+  Future<void> _saveNotifPref(String key, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(key, value);
   }
 
   @override
@@ -74,16 +109,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                CircleAvatar(
+                UserAvatar(
                   radius: 28,
-                  backgroundColor: AppColors.primary.withOpacity(0.2),
-                  backgroundImage: firebaseUser?.photoURL != null ? NetworkImage(firebaseUser!.photoURL!) : null,
-                  child: firebaseUser?.photoURL == null
-                      ? Text(
-                          user?.name.isNotEmpty == true ? (user?.name[0].toUpperCase() ?? 'U') : 'U',
-                          style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 22),
-                        )
-                      : null,
+                  photoUrl: firebaseUser?.photoURL,
+                  initial: user?.name.isNotEmpty == true ? (user?.name[0].toUpperCase() ?? 'U') : 'U',
+                  isPremium: isPremium,
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -100,7 +130,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ],
                   ),
                 ),
-                if (isPremium) const Text('✨', style: TextStyle(fontSize: 22)),
               ],
             ),
           ).animate().fadeIn(),
@@ -110,7 +139,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _SettingTile(
             icon: Icons.verified_user_outlined,
             label: 'Account Type',
-            trailing: isPremium ? '✨ Pro' : 'Free',
+            trailing: isPremium 
+                ? (user?.premiumPlan == 'ufit_pro_monthly' 
+                    ? '✨ Pro (Monthly)' 
+                    : user?.premiumPlan == 'ufit_pro_yearly'
+                        ? '✨ Pro (Yearly)'
+                        : user?.premiumPlan == 'ufit_pro_lifetime'
+                            ? '✨ Pro (Lifetime)'
+                            : '✨ Pro')
+                : 'Free',
             trailingColor: isPremium ? AppColors.primary : null,
             onTap: () => context.push('/premium'),
           ),
@@ -161,15 +198,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _SwitchTile(
             icon: Icons.local_drink_outlined,
             label: 'Water Reminders',
-            subtitle: 'Every 2 hours, 8am–10pm',
+            subtitle: 'Tap to configure (${_waterIntervalHours}h interval, ${_formatTimeOfDay(_waterStartHour, _waterStartMinute)} - ${_formatTimeOfDay(_waterEndHour, _waterEndMinute)})',
             value: _waterRemindersOn,
+            onTap: _showWaterReminderConfigDialog,
             onChanged: (v) async {
               setState(() => _waterRemindersOn = v);
+              await _saveNotifPref('water_reminders_on', v);
               if (v) {
                 await NotificationService.requestPermissions();
                 await NotificationService.scheduleWaterReminder();
               } else {
-                await NotificationService.cancelAll();
+                await NotificationService.cancelWaterReminders();
               }
             },
           ),
@@ -180,22 +219,78 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             value: _habitRemindersOn,
             onChanged: (v) async {
               setState(() => _habitRemindersOn = v);
-              if (v) await NotificationService.requestPermissions();
+              await _saveNotifPref('habit_reminders_on', v);
+              if (v) {
+                await NotificationService.requestPermissions();
+                final habits = ref.read(habitsProvider);
+                for (final habit in habits) {
+                  if (habit.reminderEnabled && habit.reminderTime != null) {
+                    await NotificationService.scheduleHabitReminder(
+                      id: habit.id.hashCode,
+                      habitName: habit.name,
+                      time: habit.reminderTime!,
+                      weekDays: habit.weekDays,
+                    );
+                  }
+                }
+              } else {
+                final habits = ref.read(habitsProvider);
+                for (final habit in habits) {
+                  await NotificationService.cancelHabitReminders(habit.id.hashCode);
+                }
+              }
             },
           ),
           _SwitchTile(
             icon: Icons.bedtime_outlined,
             label: 'Sleep Reminder',
-            subtitle: 'Bedtime notification at 10:30 PM',
+            subtitle: 'Tap to change bedtime (${_formatTimeOfDay(_sleepHour, _sleepMinute)})',
             value: _sleepReminderOn,
+            onTap: () async {
+              final selectedTime = await showTimePicker(
+                context: context,
+                initialTime: TimeOfDay(hour: _sleepHour, minute: _sleepMinute),
+                builder: (context, child) {
+                  return Theme(
+                    data: Theme.of(context).copyWith(
+                      colorScheme: ColorScheme.dark(
+                        primary: AppColors.primary,
+                        onPrimary: Colors.white,
+                        surface: context.card,
+                        onSurface: context.text,
+                      ),
+                    ),
+                    child: child!,
+                  );
+                },
+              );
+              if (selectedTime != null) {
+                setState(() {
+                  _sleepHour = selectedTime.hour;
+                  _sleepMinute = selectedTime.minute;
+                  _sleepReminderOn = true;
+                });
+                await _saveNotifPref('sleep_reminders_on', true);
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setInt('sleep_reminder_hour', selectedTime.hour);
+                await prefs.setInt('sleep_reminder_minute', selectedTime.minute);
+
+                await NotificationService.requestPermissions();
+                await NotificationService.scheduleSleepReminder(selectedTime.hour, selectedTime.minute);
+              }
+            },
             onChanged: (v) async {
               setState(() => _sleepReminderOn = v);
+              await _saveNotifPref('sleep_reminders_on', v);
               if (v) {
                 await NotificationService.requestPermissions();
-                await NotificationService.scheduleSleepReminder(22, 30);
+                await NotificationService.scheduleSleepReminder(_sleepHour, _sleepMinute);
+              } else {
+                await NotificationService.cancelSleepReminder();
               }
             },
           ),
+
 
           const SizedBox(height: 20),
 
@@ -225,12 +320,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             },
           ),
           _SettingTile(
-            icon: Icons.delete_sweep_outlined,
-            label: 'Clear All Local Data',
-            isDestructive: true,
-            onTap: () => _confirmClearData(),
-          ),
-          _SettingTile(
             icon: Icons.privacy_tip_outlined,
             label: 'Privacy Policy',
             onTap: () => context.push('/legal-privacy'),
@@ -244,8 +333,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _SectionLabel('Support'),
           _SettingTile(icon: Icons.info_outline_rounded, label: 'About uFit', onTap: () => context.push('/about')),
           _SettingTile(icon: Icons.help_outline_rounded, label: 'Help Center', onTap: () => context.push('/help-center')),
-          _SettingTile(icon: Icons.mail_outline_rounded, label: 'Contact Support', onTap: () => _launchUrl('mailto:dilipkohar4320@gmail.com?subject=uFit Support')),
+          _SettingTile(icon: Icons.mail_outline_rounded, label: 'Contact Support', onTap: () => _launchUrl('mailto:support.ufit@gmail.com?subject=uFit Support')),
           _SettingTile(icon: Icons.star_outline_rounded, label: 'Rate uFit ⭐', onTap: () => _showInfoDialog('Rate uFit', 'Thank you for using uFit! ❤️\n\nWe will add the Play Store link here once the app is published. Stay tuned!')),
+          _SettingTile(icon: Icons.share_rounded, label: 'Share App', onTap: () => _shareApp()),
           _SettingTile(icon: Icons.description_outlined, label: 'Terms of Service', onTap: () => context.push('/legal-terms')),
 
           const SizedBox(height: 20),
@@ -454,6 +544,216 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  void _showWaterReminderConfigDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        int startH = _waterStartHour;
+        int startM = _waterStartMinute;
+        int endH = _waterEndHour;
+        int endM = _waterEndMinute;
+        int interval = _waterIntervalHours;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: context.card,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                children: [
+                  const Icon(Icons.local_drink_rounded, color: AppColors.primary, size: 24),
+                  const SizedBox(width: 8),
+                  Text('Water Reminders', style: TextStyle(color: context.text, fontSize: 18, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Configure your daily hydration prompts. Reminders will only repeat during this window.',
+                    style: TextStyle(color: context.textSecondary, fontSize: 13, height: 1.4),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Start & End Time row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () async {
+                            final t = await showTimePicker(
+                              context: context,
+                              initialTime: TimeOfDay(hour: startH, minute: startM),
+                              builder: (context, child) {
+                                return Theme(
+                                  data: Theme.of(context).copyWith(
+                                    colorScheme: ColorScheme.dark(
+                                      primary: AppColors.primary,
+                                      onPrimary: Colors.white,
+                                      surface: context.card,
+                                      onSurface: context.text,
+                                    ),
+                                  ),
+                                  child: child!,
+                                );
+                              },
+                            );
+                            if (t != null) {
+                              setDialogState(() {
+                                startH = t.hour;
+                                startM = t.minute;
+                              });
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                            decoration: BoxDecoration(
+                              color: context.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: context.border.withOpacity(0.5)),
+                            ),
+                            child: Column(
+                              children: [
+                                Text('Start Time', style: TextStyle(fontSize: 11, color: context.textSecondary)),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _formatTimeOfDay(startH, startM),
+                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () async {
+                            final t = await showTimePicker(
+                              context: context,
+                              initialTime: TimeOfDay(hour: endH, minute: endM),
+                              builder: (context, child) {
+                                return Theme(
+                                  data: Theme.of(context).copyWith(
+                                    colorScheme: ColorScheme.dark(
+                                      primary: AppColors.primary,
+                                      onPrimary: Colors.white,
+                                      surface: context.card,
+                                      onSurface: context.text,
+                                    ),
+                                  ),
+                                  child: child!,
+                                );
+                              },
+                            );
+                            if (t != null) {
+                              setDialogState(() {
+                                endH = t.hour;
+                                endM = t.minute;
+                              });
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                            decoration: BoxDecoration(
+                              color: context.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: context.border.withOpacity(0.5)),
+                            ),
+                            child: Column(
+                              children: [
+                                Text('End Time', style: TextStyle(fontSize: 11, color: context.textSecondary)),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _formatTimeOfDay(endH, endM),
+                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Frequency (Interval) selector
+                  Text('Reminder Frequency', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: context.textSecondary)),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: context.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: context.border.withOpacity(0.5)),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                        value: interval,
+                        isExpanded: true,
+                        dropdownColor: context.card,
+                        style: TextStyle(color: context.text, fontSize: 14),
+                        items: const [
+                          DropdownMenuItem(value: 1, child: Text('Every 1 hour')),
+                          DropdownMenuItem(value: 2, child: Text('Every 2 hours')),
+                          DropdownMenuItem(value: 3, child: Text('Every 3 hours')),
+                          DropdownMenuItem(value: 4, child: Text('Every 4 hours')),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) {
+                            setDialogState(() => interval = val);
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cancel', style: TextStyle(color: context.textSecondary)),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    setState(() {
+                      _waterStartHour = startH;
+                      _waterStartMinute = startM;
+                      _waterEndHour = endH;
+                      _waterEndMinute = endM;
+                      _waterIntervalHours = interval;
+                      _waterRemindersOn = true;
+                    });
+
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setInt('water_start_hour', startH);
+                    await prefs.setInt('water_start_minute', startM);
+                    await prefs.setInt('water_end_hour', endH);
+                    await prefs.setInt('water_end_minute', endM);
+                    await prefs.setInt('water_interval_hours', interval);
+                    await prefs.setBool('water_reminders_on', true);
+
+                    await NotificationService.requestPermissions();
+                    await NotificationService.scheduleWaterReminder();
+
+                    if (mounted) Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text('Save Schedule', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showInfoDialog(String title, String content) {
     showDialog(
       context: context,
@@ -473,27 +773,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (await canLaunchUrl(uri)) await launchUrl(uri);
   }
 
-  void _confirmClearData() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: context.surface,
-        title: const Text('Clear All Data?'),
-        content: const Text('This permanently deletes all your local habits, logs, and progress. Your account is NOT deleted.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              await StorageService.clearAll();
-              if (context.mounted) { Navigator.pop(context); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('All local data cleared'))); }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Clear Everything'),
-          ),
-        ],
+  void _shareApp() {
+    SharePlus.instance.share(
+      ShareParams(
+        text: '🏋️ Check out uFit — Your All-in-One Daily Health & Fitness Companion! Track habits, water, workouts, sleep, weight & more. Download it now! 💪\n\nhttps://play.google.com/store/apps/details?id=com.fittrack.ufit',
       ),
     );
   }
+
 
   void _confirmSignOut() {
     showDialog(
@@ -531,7 +818,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onPressed: () async {
               try {
                 await AuthService.deleteAccount();
-                await StorageService.clearAll();
                 ref.read(userProvider.notifier).logout();
               } catch (e) {
                 if (mounted) Navigator.pop(context);
@@ -639,14 +925,23 @@ class _SwitchTile extends StatelessWidget {
   final String? subtitle;
   final bool value;
   final Function(bool) onChanged;
+  final VoidCallback? onTap;
 
-  const _SwitchTile({required this.icon, required this.label, this.subtitle, required this.value, required this.onChanged});
+  const _SwitchTile({
+    required this.icon,
+    required this.label,
+    this.subtitle,
+    required this.value,
+    required this.onChanged,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: GlassCard(
+        onTap: onTap,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(
           children: [

@@ -43,16 +43,11 @@ class ProfileScreen extends ConsumerWidget {
             gradient: AppColors.primaryGradient,
             child: Row(
               children: [
-                CircleAvatar(
+                UserAvatar(
                   radius: 32,
-                  backgroundColor: Colors.white.withOpacity(0.2),
-                  backgroundImage: firebaseUser?.photoURL != null ? NetworkImage(firebaseUser!.photoURL!) : null,
-                  child: firebaseUser?.photoURL == null
-                      ? Text(
-                          user?.name.isNotEmpty == true ? (user?.name[0].toUpperCase() ?? 'U') : 'U',
-                          style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800),
-                        )
-                      : null,
+                  photoUrl: firebaseUser?.photoURL,
+                  initial: user?.name.isNotEmpty == true ? (user?.name[0].toUpperCase() ?? 'U') : 'U',
+                  isPremium: isPremium,
                 ),
                 SizedBox(width: 16),
                 Expanded(
