@@ -41,6 +41,20 @@ class AiService {
         .where((s) => s.bedTime.isAfter(aWeekAgo))
         .toList();
 
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    int calorieGoal = 2000;
+    if (userDoc.exists && userDoc.data() != null) {
+      calorieGoal = userDoc.data()!['dailyCalorieGoal'] ?? 2000;
+    }
+
+    final nutritionSnap = await FirebaseFirestore.instance.collection('users').doc(uid).collection('nutrition_logs').get();
+    final today = DateTime.now();
+    final todayNutrition = nutritionSnap.docs.map((d) => NutritionLog.fromMap(d.data(), d.id))
+        .where((n) => n.date.year == today.year && n.date.month == today.month && n.date.day == today.day)
+        .toList();
+    
+    double todayCalories = todayNutrition.fold(0.0, (sum, n) => sum + n.calories);
+
     // Build the prompt context
     int totalWorkouts = workouts.length;
     int totalWaterMl = water.fold<int>(0, (sum, w) => sum + w.amountMl);
@@ -48,14 +62,20 @@ class AiService {
     int activeHabits = habits.where((h) => h.currentStreak > 0).length;
 
     final prompt = """
-You are a highly motivating AI fitness and wellness coach analyzing a user's recent activity in the uFit app.
+You are an analytical, constructive, and highly motivating AI fitness coach analyzing a user's recent activity in the uFit app.
 Over the last 7 days, the user has:
 - Completed $totalWorkouts workout sessions
 - Logged a total of $totalWaterMl ml of water
 - Averaged ${avgSleep.toStringAsFixed(1)} hours of sleep per night
 - Maintained active streaks on $activeHabits habits
 
-Based on this data, provide 2 short, punchy, and highly motivating insights or actionable tips. 
+TODAY'S NUTRITION:
+- Consumed: ${todayCalories.toInt()} kcal
+- Goal: $calorieGoal kcal
+
+Based on ALL of this data, provide 2 short, punchy, and constructive insights or actionable tips. 
+Focus on the most important areas where they need improvement or deserve praise (e.g., maybe their sleep is terrible, maybe they missed their water goal, maybe they are crushing their workouts, or maybe they ate too many calories). 
+Do not just be mindlessly positive. If they are slacking in any area, gently but firmly point it out and tell them how to fix it! If they are doing great across the board, praise them.
 Keep each insight to one sentence. Use emojis. Format as a bulleted list.
 Do not include any pleasantries or conversational filler, just the bullet points.
 """;
@@ -125,8 +145,19 @@ Do not include any pleasantries or conversational filler, just the bullet points
 
     final systemPrompt = """
 You are 'uFit AI', a friendly, highly motivating, and knowledgeable AI fitness coach built into the uFit app.
-You provide concise, actionable, and encouraging fitness, nutrition, and wellness advice.
-Keep your responses relatively brief (1-3 short paragraphs) as the user is reading on a mobile device. Use emojis occasionally.
+
+RULES FOR SPEAKING:
+1. For general chat, keep your responses extremely brief (1-2 short paragraphs maximum) and conversational. Never speak like a long speech or lecture. Use emojis occasionally.
+2. If the user asks for a WORKOUT PLAN or MEAL PLAN, you are allowed to give a longer, structured response. Use bullet points and clear headings (e.g., Day 1, Day 2) so it is easy to read on a mobile screen.
+
+APP KNOWLEDGE & FAQ (Answer these directly and concisely if asked):
+- "How do I delete my account?": You can delete your account by going to Settings (gear icon) > Account Settings > Delete Account.
+- "What is uFit Pro?" or "Subscription": uFit Pro is our premium subscription. It gives you Unlimited Habits, Ad-Free unlimited AI Coaching, Ad-Free PDF Reports, and All-Time History charts. Free users are limited to 3 habits and a 7-day history view.
+- "How do I export my data or get a PDF?": Go to Settings (gear icon) > Export Data. (Note: Free users must watch a short ad to generate it).
+- "How do I log my water, weight, or sleep?": Use the Quick Log buttons on the Home tab, or tap the specific icons at the bottom of the screen.
+- "How do I change my units (kg/lbs) or update my profile?": Go to Settings (gear icon) > Edit Profile to update your height, weight, and units.
+- "I have a bug or need help": Please contact the developer directly through the Settings screen.
+- If asked an app question NOT in this list: Say "I'm mostly here to help you with fitness and nutrition! For technical app questions, please check the Settings tab."
 
 USER'S RECENT 7-DAY STATS:
 - Workouts completed: $totalWorkouts
@@ -281,6 +312,20 @@ Example:
         final data = jsonDecode(response.body);
         final reply = data['choices'][0]['message']['content'] as String;
         final Map<String, dynamic> parsed = jsonDecode(reply);
+        
+        // Enforce mathematical accuracy for each meal's calories
+        for (final mealKey in ['breakfast', 'lunch', 'snack', 'dinner']) {
+          if (parsed.containsKey(mealKey)) {
+            final meal = parsed[mealKey];
+            final double p = (meal['protein'] as num?)?.toDouble() ?? 0.0;
+            final double c = (meal['carbs'] as num?)?.toDouble() ?? 0.0;
+            final double f = (meal['fat'] as num?)?.toDouble() ?? 0.0;
+            
+            final calculatedCalories = (p * 4) + (c * 4) + (f * 9);
+            meal['calories'] = calculatedCalories.round();
+          }
+        }
+
         return parsed;
       } else {
         print('AI Meal Plan Error ${response.statusCode}: ${response.body}');

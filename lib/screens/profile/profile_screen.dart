@@ -1,5 +1,7 @@
 // lib/screens/profile/profile_screen.dart
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -27,10 +29,10 @@ class ProfileScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: context.bg,
       appBar: AppBar(
-        title: Text('Profile'),
+        title: const Text('Profile'),
         actions: [
           IconButton(
-            icon: Icon(Icons.settings_rounded),
+            icon: const FaIcon(FontAwesomeIcons.gear, size: 19),
             onPressed: () => context.push('/settings'),
           ),
         ],
@@ -43,45 +45,56 @@ class ProfileScreen extends ConsumerWidget {
             gradient: AppColors.primaryGradient,
             child: Row(
               children: [
-                UserAvatar(
-                  radius: 32,
-                  photoUrl: firebaseUser?.photoURL,
-                  initial: user?.name.isNotEmpty == true ? (user?.name[0].toUpperCase() ?? 'U') : 'U',
-                  isPremium: isPremium,
+                CircleAvatar(
+                  radius: 34,
+                  backgroundColor: Colors.white.withOpacity(0.2),
+                  backgroundImage: firebaseUser?.photoURL != null ? NetworkImage(firebaseUser!.photoURL!) : null,
+                  child: firebaseUser?.photoURL == null
+                      ? Text(
+                          user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : 'U',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 26),
+                        )
+                      : null,
                 ),
-                SizedBox(width: 16),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(user?.name ?? firebaseUser?.displayName ?? 'Friend',
-                        style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
-                      SizedBox(height: 2),
+                        style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
                       Text(firebaseUser?.email ?? '',
-                        style: TextStyle(color: Colors.white70, fontSize: 12)),
+                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       if (isPremium)
                         Container(
                           margin: const EdgeInsets.only(top: 6),
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                           decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
-                          child: Text('✨ Pro Member', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                          child: const Text('✨ Pro Member', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
                         )
                       else
                         Text(
                           'Member since ${user != null ? DateFormat('MMM yyyy').format(user.createdAt) : ''}',
-                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                          style: const TextStyle(color: Colors.white70, fontSize: 12),
                         ),
                     ],
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.edit_rounded, color: Colors.white70),
+                  icon: const FaIcon(FontAwesomeIcons.pen, color: Colors.white70, size: 19),
                   onPressed: () => context.push('/edit-profile'),
                 ),
               ],
             ),
           ).animate().fadeIn(),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
 
           if (!isPremium)
             GestureDetector(
@@ -90,13 +103,13 @@ class ProfileScreen extends ConsumerWidget {
                 gradient: const LinearGradient(colors: [Color(0xFF1C1C27), Color(0xFF252535)]),
                 child: Row(
                   children: [
-                    Text('✨', style: TextStyle(fontSize: 28)),
-                    SizedBox(width: 14),
+                    const FaIcon(FontAwesomeIcons.wandMagicSparkles, size: 24, color: AppColors.accentYellow),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Upgrade to Pro', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+                          const Text('Upgrade to Pro', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
                           Text('Unlimited habits, analytics & more', style: TextStyle(color: context.textSecondary, fontSize: 12)),
                         ],
                       ),
@@ -104,18 +117,18 @@ class ProfileScreen extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(gradient: AppColors.primaryGradient, borderRadius: BorderRadius.circular(20)),
-                      child: Text('Upgrade', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
+                      child: const Text('Upgrade', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
                     ),
                   ],
                 ),
               ),
             ).animate().fadeIn(delay: 80.ms),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
 
           // Body stats
           if (user != null && (user.weightKg != null || user.heightCm != null)) ...[
             const SectionHeader(title: 'Body Stats'),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             SizedBox(
               height: 130,
               child: Row(
@@ -123,11 +136,11 @@ class ProfileScreen extends ConsumerWidget {
                   if (user.weightKg != null)
                     Expanded(child: StatTile(label: 'Weight', value: user.weightKg!.toStringAsFixed(1), unit: 'kg', color: AppColors.weightColor, icon: Icons.monitor_weight_outlined)),
                   if (user.heightCm != null) ...[
-                    SizedBox(width: 12),
+                    const SizedBox(width: 12),
                     Expanded(child: StatTile(label: 'Height', value: user.heightCm!.toStringAsFixed(0), unit: 'cm', color: AppColors.secondary, icon: Icons.height_rounded)),
                   ],
                   if (user.weightKg != null && user.heightCm != null) ...[
-                    SizedBox(width: 12),
+                    const SizedBox(width: 12),
                     Expanded(child: StatTile(
                       label: 'BMI',
                       value: (user.weightKg != null && user.heightCm != null) ? (user.weightKg! / ((user.heightCm! / 100) * (user.heightCm! / 100))).toStringAsFixed(1) : '--',
@@ -138,12 +151,12 @@ class ProfileScreen extends ConsumerWidget {
                 ],
               ),
             ).animate().fadeIn(delay: 100.ms),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
           ],
 
           // Activity summary
           const SectionHeader(title: 'Activity Summary'),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
@@ -158,38 +171,44 @@ class ProfileScreen extends ConsumerWidget {
               StatTile(label: 'Weight Logs', value: '${weight.length}', color: AppColors.weightColor, icon: Icons.monitor_weight_outlined),
             ],
           ).animate().fadeIn(delay: 150.ms),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
 
           // Achievements
           const SectionHeader(title: 'Achievements'),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                AchievementBadge(emoji: '🔥', title: 'First Streak', isUnlocked: habits.any((h) => h.currentStreak >= 1)),
-                SizedBox(width: 12),
-                AchievementBadge(emoji: '💧', title: 'Hydrated', isUnlocked: true),
-                SizedBox(width: 12),
-                AchievementBadge(emoji: '💪', title: '5 Workouts', isUnlocked: workouts.length >= 5),
-                SizedBox(width: 12),
-                AchievementBadge(emoji: '🌙', title: '7 Nights', isUnlocked: sleep.length >= 7),
-                SizedBox(width: 12),
-                AchievementBadge(emoji: '⚖️', title: 'Weight Tracker', isUnlocked: weight.isNotEmpty),
-                SizedBox(width: 12),
-                AchievementBadge(emoji: '🎯', title: 'Goal Setter', isUnlocked: user?.fitnessGoal != null),
+                AchievementBadge(icon: FontAwesomeIcons.fire, title: '3-Day Starter', isUnlocked: (user?.currentAppStreak ?? 0) >= 3),
+                const SizedBox(width: 12),
+                AchievementBadge(icon: FontAwesomeIcons.bolt, title: '7-Day Warrior', isUnlocked: (user?.currentAppStreak ?? 0) >= 7),
+                const SizedBox(width: 12),
+                AchievementBadge(icon: FontAwesomeIcons.crown, title: '30-Day Legend', isUnlocked: (user?.currentAppStreak ?? 0) >= 30),
+                const SizedBox(width: 12),
+                AchievementBadge(icon: FontAwesomeIcons.bullseye, title: 'First Habit', isUnlocked: habits.any((h) => h.currentStreak >= 1)),
+                const SizedBox(width: 12),
+                const AchievementBadge(icon: FontAwesomeIcons.droplet, title: 'Hydrated', isUnlocked: true),
+                const SizedBox(width: 12),
+                AchievementBadge(icon: FontAwesomeIcons.dumbbell, title: '5 Workouts', isUnlocked: workouts.length >= 5),
+                const SizedBox(width: 12),
+                AchievementBadge(icon: FontAwesomeIcons.moon, title: '7 Nights', isUnlocked: sleep.length >= 7),
+                const SizedBox(width: 12),
+                AchievementBadge(icon: FontAwesomeIcons.scaleBalanced, title: 'Weight Tracker', isUnlocked: weight.isNotEmpty),
+                const SizedBox(width: 12),
+                AchievementBadge(icon: FontAwesomeIcons.flag, title: 'Goal Setter', isUnlocked: user?.fitnessGoal != null),
               ],
             ),
           ).animate().fadeIn(delay: 200.ms),
-          SizedBox(height: 24),
+          const SizedBox(height: 24),
 
           // Quick links
           const SectionHeader(title: 'Quick Links'),
-          SizedBox(height: 12),
-          _QuickLink(icon: Icons.settings_rounded, label: 'Settings', onTap: () => context.push('/settings')),
-          _QuickLink(icon: Icons.workspace_premium_rounded, label: 'Upgrade to Pro', onTap: () => context.push('/premium'), highlight: !isPremium),
-          _QuickLink(icon: Icons.logout_rounded, label: 'Sign Out', onTap: () => _confirmSignOut(context, ref), isDestructive: true),
-          SizedBox(height: 40),
+          const SizedBox(height: 12),
+          _QuickLink(icon: FontAwesomeIcons.gear, label: 'Settings', onTap: () => context.push('/settings')),
+          _QuickLink(icon: FontAwesomeIcons.wandMagicSparkles, label: 'Upgrade to Pro', onTap: () => context.push('/premium'), highlight: true),
+          _QuickLink(icon: FontAwesomeIcons.arrowRightFromBracket, label: 'Sign Out', onTap: () => _confirmSignOut(context, ref), isDestructive: true),
+          const SizedBox(height: 40),
         ],
       ),
     );
@@ -200,18 +219,18 @@ class ProfileScreen extends ConsumerWidget {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: context.surface,
-        title: Text('Sign Out?'),
-        content: Text('You can sign back in anytime.'),
+        title: const Text('Sign Out?'),
+        content: const Text('You can sign back in anytime.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(context, rootNavigator: true).pop(), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.of(context, rootNavigator: true).pop();
               await AuthService.signOut();
               ref.read(userProvider.notifier).logout();
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: Text('Sign Out'),
+            child: const Text('Sign Out'),
           ),
         ],
       ),
@@ -239,9 +258,9 @@ class _QuickLink extends StatelessWidget {
         child: Row(
           children: [
             Icon(icon, size: 20, color: color.withOpacity(0.8)),
-            SizedBox(width: 14),
-            Expanded(child: Text(label, style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.w500))),
-            Icon(Icons.chevron_right_rounded, color: color.withOpacity(0.4), size: 18),
+            const SizedBox(width: 14),
+            Expanded(child: Text(label, style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.w600))),
+            FaIcon(FontAwesomeIcons.chevronRight, color: color.withOpacity(0.4), size: 18),
           ],
         ),
       ),

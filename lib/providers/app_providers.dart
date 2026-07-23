@@ -4,22 +4,44 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide EmailAuthProvider;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:uuid/uuid.dart';
 import 'auth_provider.dart';
 import '../models/models.dart';
 import '../services/notification_service.dart';
 import '../services/health_service.dart';
 import '../services/widget_service.dart';
+import 'package:pedometer/pedometer.dart';
 
 // ─── THEME PROVIDER ──────────────────────────────────────────
+final tabScrollEventProvider = StateProvider<String?>((ref) => null);
+
 final themeProvider = StateNotifierProvider<ThemeNotifier, bool>((ref) {
   return ThemeNotifier();
 });
 
 class ThemeNotifier extends StateNotifier<bool> {
-  ThemeNotifier() : super(true); // true = dark mode default
-  void toggle() => state = !state;
-  void setDark(bool isDark) => state = isDark;
+  ThemeNotifier() : super(true) {
+    _loadTheme();
+  }
+
+  Future<void> _loadTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getBool('isDarkMode') ?? true;
+  }
+
+  void toggle() {
+    state = !state;
+    _saveTheme(state);
+  }
+
+  void setDark(bool isDark) {
+    state = isDark;
+    _saveTheme(state);
+  }
+
+  Future<void> _saveTheme(bool isDark) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isDarkMode', isDark);
+  }
 }
 
 // ─── USER PROVIDER ───────────────────────────────────────────
@@ -71,6 +93,48 @@ class UserNotifier extends StateNotifier<UserModel?> {
       ..premiumExpiry = expiry
       ..premiumPlan = plan;
     await saveUser(updated);
+  }
+
+  Future<void> recordAppOpen() async {
+    final currentUser = state;
+    if (currentUser == null) return;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    bool needsUpdate = false;
+    int streak = currentUser.currentAppStreak;
+    int longest = currentUser.longestAppStreak;
+
+    if (currentUser.lastActiveDate == null) {
+      streak = 1;
+      needsUpdate = true;
+    } else {
+      final lastDate = currentUser.lastActiveDate!;
+      final lastActiveDay = DateTime(lastDate.year, lastDate.month, lastDate.day);
+      
+      final difference = today.difference(lastActiveDay).inDays;
+      
+      if (difference == 1) {
+        streak += 1;
+        needsUpdate = true;
+      } else if (difference > 1) {
+        streak = 1;
+        needsUpdate = true;
+      }
+    }
+
+    if (needsUpdate) {
+      if (streak > longest) {
+        longest = streak;
+      }
+      currentUser.currentAppStreak = streak;
+      currentUser.longestAppStreak = longest;
+      currentUser.lastActiveDate = now;
+      
+      state = UserModel.fromMap(currentUser.toMap(), currentUser.id);
+      await saveUser(currentUser);
+    }
   }
 
   void logout() {
@@ -495,7 +559,7 @@ final premiumProvider = StateNotifierProvider<PremiumNotifier, bool>((ref) {
 });
 
 class PremiumNotifier extends StateNotifier<bool> {
-  PremiumNotifier(bool initial) : super(initial);
+  PremiumNotifier(super.initial);
   void setPremium(bool value) => state = value;
 }
 
@@ -596,6 +660,7 @@ class WorkoutTemplatesNotifier extends StateNotifier<List<WorkoutTemplate>> {
 }
 
 // ─── STEPS PROVIDER ──────────────────────────────────────────
+
 final stepsProvider = StateNotifierProvider<StepsNotifier, List<StepLog>>((ref) {
   return StepsNotifier(ref);
 });
@@ -603,8 +668,13 @@ final stepsProvider = StateNotifierProvider<StepsNotifier, List<StepLog>>((ref) 
 class StepsNotifier extends StateNotifier<List<StepLog>> {
   final Ref _ref;
   StreamSubscription? _sub;
-  int _sensorStepsToday = 0;
-  String pedestrianStatus = 'unknown';
+  StreamSubscription? _pedometerSub;
+  Timer? _walkingTimer;
+  
+  int _baseHealthSteps = 0;
+  int _bootStepsAtInit = -1;
+  int _liveDelta = 0;
+  String pedestrianStatus = 'stopped';
 
   StepsNotifier(this._ref) : super([]) {
     _ref.listen<User?>(currentFirebaseUserProvider, (prev, next) {
@@ -626,13 +696,42 @@ class StepsNotifier extends StateNotifier<List<StepLog>> {
       }
     }, fireImmediately: true);
     
-    _initHealth();
+    _initHealthAndPedometer();
   }
 
-  Future<void> _initHealth() async {
-    final steps = await HealthService.getTodaySteps();
-    _sensorStepsToday = steps;
+  Future<void> _initHealthAndPedometer() async {
+    // 1. Get base steps for today from Health Connect
+    _baseHealthSteps = await HealthService.getTodaySteps();
     state = [...state]; // Force UI update
+    
+    // 2. Request permission and listen to live steps
+    final status = await Permission.activityRecognition.request();
+    if (status.isGranted) {
+      try {
+        _pedometerSub = Pedometer.stepCountStream.listen((event) {
+          if (_bootStepsAtInit == -1) {
+            _bootStepsAtInit = event.steps;
+          } else {
+            int newDelta = event.steps - _bootStepsAtInit;
+            if (newDelta < 0) newDelta = 0; 
+            
+            if (newDelta > _liveDelta) {
+              _liveDelta = newDelta;
+              pedestrianStatus = 'walking';
+              state = [...state]; // Force UI update on new steps
+              
+              _walkingTimer?.cancel();
+              _walkingTimer = Timer(const Duration(seconds: 10), () {
+                pedestrianStatus = 'stopped';
+                state = [...state];
+              });
+            }
+          }
+        });
+      } catch (e) {
+        print('Pedometer stream error: $e');
+      }
+    }
   }
 
   Future<void> addStepLog(StepLog log) async {
@@ -649,18 +748,18 @@ class StepsNotifier extends StateNotifier<List<StepLog>> {
 
   int get todayTotalSteps {
     final manualSteps = state.fold(0, (sum, log) => sum + log.steps);
-    return manualSteps + _sensorStepsToday;
+    return manualSteps + _baseHealthSteps + _liveDelta;
   }
   
   int get todayTotalCalories {
     final manualCals = state.fold(0, (sum, log) => sum + (log.caloriesBurned ?? 0));
-    final sensorCals = (_sensorStepsToday * 0.04).toInt(); 
+    final sensorCals = ((_baseHealthSteps + _liveDelta) * 0.04).toInt(); 
     return manualCals + sensorCals;
   }
   
   double get todayTotalDistanceKm {
     final manualDist = state.fold(0.0, (sum, log) => sum + (log.distanceKm ?? 0.0));
-    final sensorDist = _sensorStepsToday * 0.000762; 
+    final sensorDist = (_baseHealthSteps + _liveDelta) * 0.000762; 
     return manualDist + sensorDist;
   }
   
@@ -668,7 +767,9 @@ class StepsNotifier extends StateNotifier<List<StepLog>> {
 
   @override
   void dispose() {
+    _walkingTimer?.cancel();
     _sub?.cancel();
+    _pedometerSub?.cancel();
     super.dispose();
   }
 }

@@ -1,4 +1,9 @@
 import 'dart:async';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../providers/app_providers.dart';
+import '../../services/ad_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../services/ai_service.dart';
@@ -7,23 +12,32 @@ import 'package:ufit/theme/theme_ext.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
-class CoachScreen extends StatefulWidget {
-  const CoachScreen({Key? key}) : super(key: key);
+class CoachScreen extends ConsumerStatefulWidget {
+  const CoachScreen({super.key});
 
   @override
-  State<CoachScreen> createState() => _CoachScreenState();
+  ConsumerState<CoachScreen> createState() => _CoachScreenState();
 }
 
-class _CoachScreenState extends State<CoachScreen> {
+class _CoachScreenState extends ConsumerState<CoachScreen> {
   final TextEditingController _textCtrl = TextEditingController();
   final ScrollController _scrollCtrl = ScrollController();
   final List<Map<String, String>> _messages = [];
   bool _isLoading = false;
 
+  int _aiTokens = 3;
+
   @override
   void initState() {
     super.initState();
     _loadMessages();
+    AdService.loadRewardedAd();
+    _loadTokens();
+  }
+
+  Future<void> _loadTokens() async {
+    final tokens = await AdService.getAiTokens();
+    if (mounted) setState(() => _aiTokens = tokens);
   }
 
   void _loadMessages() async {
@@ -69,10 +83,7 @@ class _CoachScreenState extends State<CoachScreen> {
     prefs.setString('coach_messages', jsonEncode(toSave));
   }
 
-  Future<void> _sendMessage() async {
-    final text = _textCtrl.text.trim();
-    if (text.isEmpty || _isLoading) return;
-
+  Future<void> _processMessage(String text) async {
     _textCtrl.clear();
     setState(() {
       _messages.add({"role": "user", "content": text});
@@ -93,6 +104,72 @@ class _CoachScreenState extends State<CoachScreen> {
     }
   }
 
+  Future<void> _sendMessage() async {
+    final text = _textCtrl.text.trim();
+    if (text.isEmpty || _isLoading) return;
+
+    final isPremium = ref.read(premiumProvider);
+
+    if (isPremium) {
+      await _processMessage(text);
+      return;
+    }
+
+    // Not premium, check tokens
+    if (_aiTokens > 0) {
+      await AdService.useAiToken();
+      await _loadTokens(); // refresh count
+      await _processMessage(text);
+    } else {
+      // Out of tokens, prompt to watch an ad
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: context.surface,
+          title: const Row(
+            children: [
+              Icon(Icons.videocam_outlined, color: AppColors.primary),
+              SizedBox(width: 8),
+              Text('Out of Free Messages'),
+            ],
+          ),
+          content: const Text('You have used all your free AI tokens. Watch a short video ad to earn 3 more messages, or upgrade to Pro for unlimited, ad-free AI coaching.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _showAdToEarnTokens();
+              },
+              child: const Text('Watch Ad'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  void _showAdToEarnTokens() {
+    setState(() => _isLoading = true);
+    AdService.showRewardedAd(
+      onRewardEarned: () async {
+        await AdService.addAiTokens(3);
+        await _loadTokens();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('You earned 3 AI tokens!'), backgroundColor: AppColors.success),
+          );
+        }
+      },
+      onAdClosed: () {
+        if (mounted) setState(() => _isLoading = false);
+      },
+    );
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollCtrl.hasClients) {
@@ -111,19 +188,40 @@ class _CoachScreenState extends State<CoachScreen> {
     _scrollCtrl.dispose();
     super.dispose();
   }
-
   @override
   Widget build(BuildContext context) {
+    final isPremium = ref.watch(premiumProvider);
+
     return Scaffold(
       appBar: AppBar(
-        title: RichText(
-          text: TextSpan(
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            children: const [
-              TextSpan(text: 'u', style: TextStyle(color: Color(0xFFFF8552))),
-              TextSpan(text: 'Fit AI ✨'),
-            ],
-          ),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            RichText(
+              text: TextSpan(
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                children: const [
+                  TextSpan(text: 'u', style: TextStyle(color: Color(0xFFFF8552))),
+                  TextSpan(text: 'Fit AI ✨'),
+                ],
+              ),
+            ),
+            if (!isPremium)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.electric_bolt, color: AppColors.primary, size: 12),
+                    const SizedBox(width: 4),
+                    Text('$_aiTokens', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12)),
+                  ],
+                ),
+              ),
+          ],
         ),
         backgroundColor: context.surface,
         surfaceTintColor: Colors.transparent,
@@ -200,12 +298,12 @@ class _CoachScreenState extends State<CoachScreen> {
           ),
           const SizedBox(width: 8),
           Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: AppColors.primaryGradient,
               shape: BoxShape.circle,
             ),
             child: IconButton(
-              icon: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+              icon: const FaIcon(FontAwesomeIcons.paperPlane, color: Colors.white, size: 16),
               onPressed: _sendMessage,
             ),
           ),
@@ -284,7 +382,7 @@ class _ChatBubble extends StatelessWidget {
                 gradient: AppColors.primaryGradient,
               ),
               child: const Center(
-                child: Icon(Icons.smart_toy_rounded, color: Colors.white, size: 18),
+                child: FaIcon(FontAwesomeIcons.robot, color: Colors.white, size: 14),
               ),
             ),
             Flexible(child: bubble),

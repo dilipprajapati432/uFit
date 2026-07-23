@@ -1,10 +1,11 @@
 // lib/screens/auth/login_screen.dart
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import 'package:ufit/theme/theme_ext.dart';
@@ -42,7 +43,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 // Back button
                 IconButton(
                   onPressed: () => context.canPop() ? context.pop() : context.go('/welcome'),
-                  icon: const Icon(Icons.arrow_back_rounded),
+                  icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 19),
                   style: IconButton.styleFrom(
                     backgroundColor: context.card,
                     padding: const EdgeInsets.all(10),

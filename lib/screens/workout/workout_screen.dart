@@ -1,5 +1,7 @@
 // lib/screens/workout/workout_screen.dart
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +10,7 @@ import '../../models/models.dart';
 import '../../providers/app_providers.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
+
 import 'package:ufit/theme/theme_ext.dart';
 
 class WorkoutScreen extends ConsumerWidget {
@@ -20,13 +23,29 @@ class WorkoutScreen extends ConsumerWidget {
     final weekMinutes = ref.read(workoutProvider.notifier).getThisWeekMinutes();
     final weekCalories = ref.read(workoutProvider.notifier).getThisWeekCalories();
 
+    ref.listen<String?>(tabScrollEventProvider, (prev, next) {
+      if (next == '/workout') {
+        final controller = PrimaryScrollController.of(context);
+        if (controller.hasClients) {
+          controller.animateTo(
+            0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ref.read(tabScrollEventProvider.notifier).state = null;
+        });
+      }
+    });
+
     return Scaffold(
       backgroundColor: context.bg,
       appBar: AppBar(title: const Text('Workouts')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showNewWorkoutSheet(context),
         backgroundColor: AppColors.workoutColor,
-        icon: const Icon(Icons.add_rounded),
+        icon: const FaIcon(FontAwesomeIcons.plus, size: 19),
         label: const Text('New Workout'),
       ),
       body: CustomScrollView(
@@ -77,10 +96,14 @@ class WorkoutScreen extends ConsumerWidget {
           ),
           if (sessions.isEmpty)
             const SliverFillRemaining(
-              child: EmptyState(
-                emoji: '💪',
-                title: 'No workouts yet',
-                subtitle: 'Start your first workout to begin tracking your fitness journey',
+              hasScrollBody: false,
+              child: Padding(
+                padding: EdgeInsets.only(bottom: 80),
+                child: EmptyState(
+                  emoji: '💪',
+                  title: 'No workouts yet',
+                  subtitle: 'Start your first workout to begin tracking your fitness journey',
+                ),
               ),
             )
           else
@@ -205,7 +228,7 @@ class _WorkoutHistoryCard extends StatelessWidget {
                 ),
               ),
               PopupMenuButton(
-                icon: Icon(Icons.more_vert_rounded, color: context.textMuted, size: 20),
+                icon: FaIcon(FontAwesomeIcons.ellipsisVertical, color: context.textMuted, size: 16),
                 color: context.surface,
                 itemBuilder: (_) => [
                   PopupMenuItem(
@@ -220,11 +243,11 @@ class _WorkoutHistoryCard extends StatelessWidget {
                         }
                       });
                     },
-                    child: const Row(children: [Icon(Icons.edit_outlined, size: 18), SizedBox(width: 8), Text('Edit')]),
+                    child: const Row(children: [FaIcon(FontAwesomeIcons.pen, size: 14), SizedBox(width: 8), Text('Edit')]),
                   ),
                   PopupMenuItem(
                     onTap: onDelete,
-                    child: const Row(children: [Icon(Icons.delete_outline, color: AppColors.error, size: 18), SizedBox(width: 8), Text('Delete')]),
+                    child: const Row(children: [FaIcon(FontAwesomeIcons.trash, color: AppColors.error, size: 14), SizedBox(width: 8), Text('Delete')]),
                   ),
                 ],
               ),
@@ -233,11 +256,11 @@ class _WorkoutHistoryCard extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              _MiniStat(icon: Icons.timer_outlined, value: '${session.durationMinutes} min'),
+              _MiniStat(icon: FontAwesomeIcons.stopwatch, value: '${session.durationMinutes} min'),
               const SizedBox(width: 16),
-              _MiniStat(icon: Icons.local_fire_department_outlined, value: '${session.caloriesBurned ?? 0} cal'),
+              _MiniStat(icon: FontAwesomeIcons.fire, value: '${session.caloriesBurned ?? 0} cal'),
               const SizedBox(width: 16),
-              _MiniStat(icon: Icons.fitness_center, value: '${session.exercises.length} exercises'),
+              _MiniStat(icon: FontAwesomeIcons.dumbbell, value: '${session.exercises.length} exercises'),
             ],
           ),
         ],
@@ -334,7 +357,7 @@ class _NewWorkoutFormState extends ConsumerState<_NewWorkoutForm> {
             Text('Log Workout', style: Theme.of(context).textTheme.headlineSmall),
             TextButton.icon(
               onPressed: _showTemplates,
-              icon: const Icon(Icons.file_copy_outlined, size: 18),
+              icon: const FaIcon(FontAwesomeIcons.fileLines, size: 14),
               label: const Text('Templates'),
             ),
           ],
@@ -401,8 +424,8 @@ class _NewWorkoutFormState extends ConsumerState<_NewWorkoutForm> {
             child: Padding(
               padding: const EdgeInsets.only(right: 6),
               child: Icon(
-                i < _rating ? Icons.star_rounded : Icons.star_outline_rounded,
-                color: AppColors.accentYellow,
+                FontAwesomeIcons.star,
+                color: i < _rating ? AppColors.accentYellow : context.border,
                 size: 32,
               ),
             ),
@@ -422,7 +445,7 @@ class _NewWorkoutFormState extends ConsumerState<_NewWorkoutForm> {
                 children: [
                   Expanded(child: Text(e.exerciseName, style: Theme.of(context).textTheme.bodyMedium)),
                   IconButton(
-                    icon: Icon(Icons.close, size: 16, color: context.textMuted),
+                    icon: FaIcon(FontAwesomeIcons.xmark, size: 12, color: context.textMuted),
                     onPressed: () => setState(() => _exercises.remove(e)),
                   ),
                 ],
@@ -450,7 +473,7 @@ class _NewWorkoutFormState extends ConsumerState<_NewWorkoutForm> {
                     _exerciseCtrl.clear();
                   });
                 },
-                icon: const Icon(Icons.add),
+                icon: const FaIcon(FontAwesomeIcons.plus, size: 19),
                 style: IconButton.styleFrom(backgroundColor: AppColors.workoutColor),
               ),
             ],
@@ -463,7 +486,7 @@ class _NewWorkoutFormState extends ConsumerState<_NewWorkoutForm> {
             Expanded(
               child: OutlinedButton(
                 onPressed: _saveAsTemplate,
-                style: OutlinedButton.styleFrom(side: BorderSide(color: AppColors.workoutColor)),
+                style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.workoutColor)),
                 child: const Text('Save Template', style: TextStyle(color: AppColors.workoutColor)),
               ),
             ),
@@ -505,11 +528,11 @@ class _NewWorkoutFormState extends ConsumerState<_NewWorkoutForm> {
               itemBuilder: (ctx, i) {
                 final t = templates[i];
                 return ListTile(
-                  leading: const Icon(Icons.fitness_center),
+                  leading: const FaIcon(FontAwesomeIcons.dumbbell, size: 19),
                   title: Text(t.name),
                   subtitle: Text('${t.exercises.length} exercises'),
                   trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                    icon: const FaIcon(FontAwesomeIcons.trash, color: AppColors.error, size: 19),
                     onPressed: () {
                       ref.read(workoutTemplatesProvider.notifier).deleteTemplate(t.id);
                       Navigator.pop(ctx);

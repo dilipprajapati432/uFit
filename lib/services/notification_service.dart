@@ -78,7 +78,7 @@ class NotificationService {
           'Time for your habit!',
           "Don't break your streak — complete $habitName",
           _nextInstanceOfDayTime(day, hour, minute),
-          NotificationDetails(
+          const NotificationDetails(
             android: AndroidNotificationDetails(
               'habit_reminders',
               'Habit Reminders',
@@ -87,7 +87,7 @@ class NotificationService {
               priority: Priority.high,
               icon: '@mipmap/launcher_icon',
             ),
-            iOS: const DarwinNotificationDetails(categoryIdentifier: 'habit'),
+            iOS: DarwinNotificationDetails(categoryIdentifier: 'habit'),
           ),
           androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
           uiLocalNotificationDateInterpretation:

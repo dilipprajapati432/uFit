@@ -37,7 +37,7 @@ class AppColors {
   static const workoutColor = Color(0xFFFF6B6B);
   static const sleepColor = Color(0xFF9B5DE5);
   static const weightColor = Color(0xFF00D4AA);
-  static const moodColor = Color(0xFFFFD93D);
+  static const moodColor = Color(0xFFEAA300);
   static const calorieColor = Color(0xFFFF9F43);
 
   // Status
@@ -47,7 +47,7 @@ class AppColors {
 
   // Gradients
   static const primaryGradient = LinearGradient(
-    colors: [Color(0xFF6C63FF), Color(0xFF9D97FF)],
+    colors: [Color(0xFF5A51E6), Color(0xFF837BFF)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -82,7 +82,7 @@ class AppColors {
     end: Alignment.bottomRight,
   );
   static const moodGradient = LinearGradient(
-    colors: [Color(0xFFFFD93D), Color(0xFFFF9F43)],
+    colors: [Color(0xFFEAA300), Color(0xFFFF9F43)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

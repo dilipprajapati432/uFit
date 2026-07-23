@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -8,6 +10,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/confetti_overlay.dart';
 import '../../services/ai_service.dart';
+import '../../services/ad_service.dart';
 import 'package:ufit/theme/theme_ext.dart';
 
 class NutritionScreen extends ConsumerStatefulWidget {
@@ -47,7 +50,7 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
         title: const Text('Meals & Nutrition'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_rounded),
+            icon: const FaIcon(FontAwesomeIcons.gear, size: 19),
             onPressed: () => _showGoalSheet(context, calorieGoal),
           ),
         ],
@@ -125,8 +128,8 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
                 // AI Auto Plan Button
                 OutlinedButton.icon(
                   onPressed: () => _autoPlanDay(context, ref, calorieGoal),
-                  icon: const Icon(Icons.auto_awesome),
-                  label: const Text('✨ Auto-Plan My Day'),
+                  icon: const FaIcon(FontAwesomeIcons.wandMagicSparkles, size: 16),
+                  label: const Text('Auto-Plan My Day', style: TextStyle(fontWeight: FontWeight.bold)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.purple,
                     side: const BorderSide(color: Colors.purple),
@@ -194,115 +197,193 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
   }
 
   Future<void> _autoPlanDay(BuildContext context, WidgetRef ref, int targetCalories) async {
-    final user = ref.read(userProvider);
-    String? dietPref = user?.dietaryPreference;
-
-    if (dietPref == null) {
-      // First time setup
-      dietPref = await showModalBottomSheet<String>(
+    final currentLogs = ref.read(nutritionProvider);
+    if (currentLogs.isNotEmpty) {
+      bool proceed = false;
+      await showDialog(
         context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (ctx) => Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: context.bg,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('How do you eat?', style: Theme.of(ctx).textTheme.headlineSmall),
-              const SizedBox(height: 8),
-              Text('Set your dietary preference so the AI can craft the perfect daily meals for you.', style: TextStyle(color: context.textSecondary)),
-              const SizedBox(height: 24),
-              ...['Any', 'Vegetarian', 'Vegan', 'Keto', 'Paleo'].map((pref) => 
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: context.surface,
-                      foregroundColor: context.text,
-                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                      alignment: Alignment.centerLeft,
-                      elevation: 0,
-                      side: BorderSide(color: context.border),
-                    ),
-                    onPressed: () {
-                      if (user != null) {
-                        user.dietaryPreference = pref;
-                        ref.read(userProvider.notifier).saveUser(user);
-                      }
-                      Navigator.pop(ctx, pref);
-                    },
-                    child: Row(
-                      children: [
-                        Text(pref == 'Any' ? '🍽️' : pref == 'Vegetarian' ? '🥦' : pref == 'Vegan' ? '🌱' : pref == 'Keto' ? '🥑' : '🥩', style: const TextStyle(fontSize: 20)),
-                        const SizedBox(width: 16),
-                        Text(pref, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-                      ],
-                    ),
-                  ),
-                )
-              ),
-              const SizedBox(height: 12),
-            ],
-          ),
+        builder: (ctx) => AlertDialog(
+          backgroundColor: Theme.of(context).cardColor,
+          title: const Text('Clear Existing Meals?'),
+          content: const Text('You already have meals logged today. Generating a new plan will replace them. Do you want to proceed?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+              onPressed: () {
+                proceed = true;
+                Navigator.pop(ctx);
+              },
+              child: const Text('Replace Meals'),
+            ),
+          ],
         ),
       );
+      if (!proceed) return;
+    }
+
+    final user = ref.read(userProvider);
+    String currentPref = user?.dietaryPreference ?? 'Any';
+
+    // Always ask for preference for this specific plan
+    final dietPref = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: context.bg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Dietary Preference', style: Theme.of(ctx).textTheme.headlineSmall),
+            const SizedBox(height: 8),
+            Text('What kind of meals do you want the AI to plan for you today?', style: TextStyle(color: context.textSecondary)),
+            const SizedBox(height: 24),
+            ...['Any', 'Vegetarian', 'Vegan', 'Keto', 'Paleo'].map((pref) => 
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: currentPref == pref ? Colors.purple.withOpacity(0.1) : context.surface,
+                    foregroundColor: currentPref == pref ? Colors.purple : context.text,
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                    alignment: Alignment.centerLeft,
+                    elevation: 0,
+                    side: BorderSide(color: currentPref == pref ? Colors.purple : context.border),
+                  ),
+                  onPressed: () {
+                    if (user != null && user.dietaryPreference != pref) {
+                      user.dietaryPreference = pref;
+                      ref.read(userProvider.notifier).saveUser(user);
+                    }
+                    Navigator.pop(ctx, pref);
+                  },
+                  child: Row(
+                    children: [
+                      Text(pref == 'Any' ? '🍽️' : pref == 'Vegetarian' ? '🥦' : pref == 'Vegan' ? '🌱' : pref == 'Keto' ? '🥑' : '🥩', style: const TextStyle(fontSize: 20)),
+                      const SizedBox(width: 16),
+                      Text(pref, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                      if (currentPref == pref) ...[
+                        const Spacer(),
+                        const Icon(Icons.check_circle, color: Colors.purple, size: 20),
+                      ]
+                    ],
+                  ),
+                ),
+              )
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
       
       if (dietPref == null) return; // User dismissed sheet
-    }
 
     if (!context.mounted) return;
 
-    showDialog(
-      context: context, 
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        backgroundColor: context.surface,
-        content: Row(
-          children: [
-            const CircularProgressIndicator(color: Colors.purple),
-            const SizedBox(width: 20),
-            Text('AI is planning your meals...', style: Theme.of(context).textTheme.bodyMedium),
-          ],
+    final isPremium = ref.read(premiumProvider);
+
+    Future<void> executePlanGeneration() async {
+      if (!context.mounted) return;
+      showDialog(
+        context: context, 
+        barrierDismissible: false,
+        builder: (_) => AlertDialog(
+          backgroundColor: Theme.of(context).cardColor,
+          content: Row(
+            children: [
+              const CircularProgressIndicator(color: Colors.purple),
+              const SizedBox(width: 20),
+              Text('AI is planning your meals...', style: Theme.of(context).textTheme.bodyMedium),
+            ],
+          )
         )
-      )
-    );
+      );
 
-    final plan = await AiService.generateMealPlan(targetCalories, dietaryPreference: dietPref);
-    
-    if (context.mounted) {
-      Navigator.of(context, rootNavigator: true).pop();
-    }
+      final plan = await AiService.generateMealPlan(targetCalories, dietaryPreference: dietPref!);
+      
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
 
-    if (plan != null) {
-      final now = DateTime.now();
-      for (final meal in ['breakfast', 'lunch', 'snack', 'dinner']) {
-        if (plan.containsKey(meal)) {
-          final data = plan[meal];
-          final log = NutritionLog(
-            id: const Uuid().v4(),
-            date: now,
-            mealType: meal,
-            foodName: data['name'] ?? 'Unknown',
-            calories: (data['calories'] as num?)?.toDouble() ?? 0,
-            proteinG: (data['protein'] as num?)?.toDouble(),
-            carbsG: (data['carbs'] as num?)?.toDouble(),
-            fatG: (data['fat'] as num?)?.toDouble(),
-          );
-          ref.read(nutritionProvider.notifier).addNutritionLog(log);
+      if (plan != null) {
+        // Clear old logs first
+        if (currentLogs.isNotEmpty) {
+          for (final log in currentLogs) {
+            ref.read(nutritionProvider.notifier).deleteNutritionLog(log.id);
+          }
+        }
+        
+        final now = DateTime.now();
+        for (final meal in ['breakfast', 'lunch', 'snack', 'dinner']) {
+          if (plan.containsKey(meal)) {
+            final data = plan[meal];
+            final log = NutritionLog(
+              id: const Uuid().v4(),
+              date: now,
+              mealType: meal,
+              foodName: data['name'] ?? 'Unknown',
+              calories: (data['calories'] as num?)?.toDouble() ?? 0,
+              proteinG: (data['protein'] as num?)?.toDouble(),
+              carbsG: (data['carbs'] as num?)?.toDouble(),
+              fatG: (data['fat'] as num?)?.toDouble(),
+            );
+            ref.read(nutritionProvider.notifier).addNutritionLog(log);
+          }
+        }
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Meal plan added successfully! ✨')));
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to generate meal plan. Please try again.')));
         }
       }
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Meal plan added successfully! ✨')));
-      }
+    }
+
+    if (isPremium) {
+      await executePlanGeneration();
     } else {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to generate meal plan. Please try again.')));
-      }
+      showDialog(
+        context: context,
+        builder: (ctx2) => AlertDialog(
+          backgroundColor: Theme.of(context).cardColor,
+          title: const Row(
+            children: [
+              Icon(Icons.videocam_outlined, color: Colors.purple),
+              SizedBox(width: 8),
+              Text('Premium Feature'),
+            ],
+          ),
+          content: const Text('Auto-planning your meals is a premium feature. Watch a short video ad to generate a plan for free, or upgrade to Pro for an ad-free experience.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx2),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx2);
+                AdService.showRewardedAd(
+                  onRewardEarned: () {
+                    executePlanGeneration();
+                  },
+                );
+              },
+              child: const Text('Watch Ad'),
+            ),
+          ],
+        ),
+      );
     }
   }
 }
@@ -390,7 +471,14 @@ class _MealCategory extends ConsumerWidget {
                   '${log.servingSize.toInt()} ${log.servingUnit} • P:${log.proteinG?.toInt()??0} C:${log.carbsG?.toInt()??0} F:${log.fatG?.toInt()??0}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
-                trailing: Text('${log.calories.toInt()} kcal', style: Theme.of(context).textTheme.bodyMedium),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('${log.calories.toInt()} kcal', style: Theme.of(context).textTheme.bodyMedium),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.edit_outlined, size: 16, color: Colors.grey),
+                  ],
+                ),
                 onTap: () => _showAddMealSheet(context, ref, title.toLowerCase(), existingLog: log),
                 onLongPress: () {
                   ref.read(nutritionProvider.notifier).deleteNutritionLog(log.id);
@@ -441,13 +529,30 @@ class _MealCategory extends ConsumerWidget {
                           foregroundColor: Colors.purple,
                           elevation: 0,
                         ),
-                        icon: const Icon(Icons.auto_awesome, size: 16),
-                        label: const Text('AI Auto-Fill'),
+                        icon: const FaIcon(FontAwesomeIcons.wandMagicSparkles, size: 14),
+                        label: const Text('AI Auto-Fill', style: TextStyle(fontWeight: FontWeight.bold)),
                         onPressed: () async {
                           if (nameCtrl.text.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a food name first!')));
                             return;
                           }
+
+                          final isPremium = ref.read(premiumProvider);
+                          if (!isPremium) {
+                            showDialog(
+                              context: context,
+                              builder: (ctx2) => AlertDialog(
+                                backgroundColor: Theme.of(context).cardColor,
+                                title: const Text('Pro Feature ✨'),
+                                content: const Text('AI Auto-Fill is a uFit Pro exclusive feature. Upgrade now to instantly calculate macros for any food!'),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(ctx2), child: const Text('Okay')),
+                                ],
+                              ),
+                            );
+                            return;
+                          }
+
                           setState(() => isLoading = true);
                           final data = await AiService.estimateNutrition(nameCtrl.text);
                           setState(() => isLoading = false);
@@ -468,7 +573,6 @@ class _MealCategory extends ConsumerWidget {
                 TextField(
                   controller: nameCtrl,
                   decoration: const InputDecoration(labelText: 'Food Name (e.g. 1 bowl of rice and dal)'),
-                  autofocus: true,
                 ),
                 const SizedBox(height: 16),
                 TextField(

@@ -1,5 +1,7 @@
 // lib/screens/sleep/sleep_screen.dart
 import 'package:fl_chart/fl_chart.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +13,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
 import 'package:ufit/theme/theme_ext.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../services/notification_service.dart';
 
 class SleepScreen extends ConsumerWidget {
@@ -24,14 +27,30 @@ class SleepScreen extends ConsumerWidget {
     final user = ref.watch(userProvider);
     final goal = user?.sleepGoalHours ?? 8;
 
+    ref.listen<String?>(tabScrollEventProvider, (prev, next) {
+      if (next == '/sleep') {
+        final controller = PrimaryScrollController.of(context);
+        if (controller.hasClients) {
+          controller.animateTo(
+            0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ref.read(tabScrollEventProvider.notifier).state = null;
+        });
+      }
+    });
+
     return Scaffold(
       backgroundColor: context.bg,
-      appBar: AppBar(title: Text('Sleep Tracker')),
+      appBar: AppBar(title: const Text('Sleep Tracker')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => showAppBottomSheet(context: context, child: const _LogSleepForm()),
         backgroundColor: AppColors.sleepColor,
-        icon: Icon(Icons.add_rounded),
-        label: Text('Log Sleep'),
+        icon: const FaIcon(FontAwesomeIcons.plus, size: 19),
+        label: const Text('Log Sleep'),
       ),
       body: CustomScrollView(
         slivers: [
@@ -39,7 +58,7 @@ class SleepScreen extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
 
                 // Last night card
                 GradientCard(
@@ -54,41 +73,41 @@ class SleepScreen extends ConsumerWidget {
                           Text('Last Night', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w500)),
                         ],
                       ),
-                      SizedBox(height: 12),
+                      const SizedBox(height: 12),
                       if (last != null) ...[
                         Text(
                           last.durationFormatted,
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 36),
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 36),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Text(
                           '${DateFormat('h:mm a').format(last.bedTime)} → ${DateFormat('h:mm a').format(last.wakeTime)}',
-                          style: TextStyle(color: Colors.white70, fontSize: 13),
+                          style: const TextStyle(color: Colors.white70, fontSize: 13),
                         ),
-                        SizedBox(height: 12),
+                        const SizedBox(height: 12),
                         Row(
                           children: [
                             ...List.generate(5, (i) => Icon(
-                              i < last.qualityOutOf5 ? Icons.star_rounded : Icons.star_outline_rounded,
-                              color: Colors.white,
+                              i < last.qualityOutOf5 ? FontAwesomeIcons.star : FontAwesomeIcons.star, // Wait, Lucide doesn't have an outlined star that is distinct in the same way, but let's use FontAwesomeIcons.star with color/opacity. Or we can just use FontAwesomeIcons.star vs a gray FontAwesomeIcons.star
+                              color: i < last.qualityOutOf5 ? Colors.white : Colors.white38,
                               size: 20,
                             )),
-                            SizedBox(width: 8),
+                            const SizedBox(width: 8),
                             Text(
                               _qualityLabel(last.qualityOutOf5),
-                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                             ),
                           ],
                         ),
                       ] else
-                        Text(
+                        const Text(
                           'No sleep logged yet. Tap below to log!',
                           style: TextStyle(color: Colors.white70),
                         ),
                     ],
                   ),
                 ).animate().fadeIn().scale(begin: const Offset(0.95, 0.95)),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
 
                 // Weekly stats
                 SizedBox(
@@ -101,27 +120,27 @@ class SleepScreen extends ConsumerWidget {
                           value: avgDuration.toStringAsFixed(1),
                           unit: 'hrs',
                           color: AppColors.sleepColor,
-                          icon: Icons.bedtime_rounded,
+                          icon: FontAwesomeIcons.moon,
                         ),
                       ),
-                      SizedBox(width: 12),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: StatTile(
                           label: 'Sleep Goal',
                           value: '$goal',
                           unit: 'hrs',
                           color: AppColors.primary,
-                          icon: Icons.flag_rounded,
+                          icon: FontAwesomeIcons.flag,
                         ),
                       ),
                     ],
                   ),
                 ).animate().fadeIn(delay: 100.ms),
-                SizedBox(height: 24),
+                const SizedBox(height: 24),
 
                 // Weekly chart
                 const SectionHeader(title: 'Sleep Trend'),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 GlassCard(
                   child: SizedBox(
                     height: 160,
@@ -139,7 +158,7 @@ class SleepScreen extends ConsumerWidget {
                                     getTitlesWidget: (value, meta) {
                                       final idx = value.toInt();
                                       final recentLogs = logs.take(7).toList().reversed.toList();
-                                      if (idx < 0 || idx >= recentLogs.length) return SizedBox();
+                                      if (idx < 0 || idx >= recentLogs.length) return const SizedBox();
                                       return Text(
                                         DateFormat('E').format(recentLogs[idx].bedTime)[0],
                                         style: TextStyle(color: context.textSecondary, fontSize: 10),
@@ -175,10 +194,10 @@ class SleepScreen extends ConsumerWidget {
                           ),
                   ),
                 ).animate().fadeIn(delay: 200.ms),
-                SizedBox(height: 24),
+                const SizedBox(height: 24),
 
                 const SectionHeader(title: 'Sleep History'),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
               ]),
             ),
           ),
@@ -203,9 +222,9 @@ class SleepScreen extends ConsumerWidget {
                                 color: AppColors.sleepColor.withOpacity(0.15),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Center(child: Text('🌙', style: TextStyle(fontSize: 22))),
+                              child: const Center(child: Text('🌙', style: TextStyle(fontSize: 22))),
                             ),
-                            SizedBox(width: 12),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,8 +236,8 @@ class SleepScreen extends ConsumerWidget {
                             ),
                             Row(
                               children: List.generate(5, (i) => Icon(
-                                i < log.qualityOutOf5 ? Icons.star_rounded : Icons.star_outline_rounded,
-                                color: AppColors.accentYellow,
+                                FontAwesomeIcons.star,
+                                color: i < log.qualityOutOf5 ? AppColors.accentYellow : context.border,
                                 size: 14,
                               )),
                             ),
@@ -289,9 +308,9 @@ class _LogSleepFormState extends ConsumerState<_LogSleepForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Text('Log Sleep', style: Theme.of(context).textTheme.headlineSmall),
-        SizedBox(height: 20),
+        const SizedBox(height: 20),
 
         Row(
           children: [
@@ -322,7 +341,7 @@ class _LogSleepFormState extends ConsumerState<_LogSleepForm> {
                 },
               ),
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(
               child: _TimePickerCard(
                 label: 'Wake Time',
@@ -352,14 +371,14 @@ class _LogSleepFormState extends ConsumerState<_LogSleepForm> {
             ),
           ],
         ),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
 
         GlassCard(
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.bedtime_rounded, color: AppColors.sleepColor),
-              SizedBox(width: 8),
+              const FaIcon(FontAwesomeIcons.moon, color: AppColors.sleepColor, size: 19),
+              const SizedBox(width: 8),
               Text(
                 'Total: ${duration.toStringAsFixed(1)} hours',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.sleepColor),
@@ -367,10 +386,10 @@ class _LogSleepFormState extends ConsumerState<_LogSleepForm> {
             ],
           ),
         ),
-        SizedBox(height: 20),
+        const SizedBox(height: 20),
 
         Text('Sleep Quality', style: Theme.of(context).textTheme.titleMedium),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: List.generate(5, (i) {
@@ -380,7 +399,7 @@ class _LogSleepFormState extends ConsumerState<_LogSleepForm> {
               child: Column(
                 children: [
                   Text(_sleepQualityEmoji(score), style: TextStyle(fontSize: _quality == score ? 32 : 24)),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Container(
                     width: 6,
                     height: 6,
@@ -394,10 +413,10 @@ class _LogSleepFormState extends ConsumerState<_LogSleepForm> {
             );
           }),
         ),
-        SizedBox(height: 20),
+        const SizedBox(height: 20),
 
         Text('What affected your sleep? (optional)', style: Theme.of(context).textTheme.titleMedium),
-        SizedBox(height: 10),
+        const SizedBox(height: 10),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -424,17 +443,17 @@ class _LogSleepFormState extends ConsumerState<_LogSleepForm> {
             );
           }).toList(),
         ),
-        SizedBox(height: 28),
+        const SizedBox(height: 28),
 
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
             onPressed: _save,
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.sleepColor),
-            child: Text('Save Sleep Log'),
+            child: const Text('Save Sleep Log'),
           ),
         ),
-        SizedBox(height: 20),
+        const SizedBox(height: 20),
       ],
     );
   }
@@ -505,10 +524,10 @@ class _TimePickerCard extends StatelessWidget {
       child: GlassCard(
         child: Column(
           children: [
-            Text(icon, style: TextStyle(fontSize: 24)),
-            SizedBox(height: 6),
+            Text(icon, style: const TextStyle(fontSize: 24)),
+            const SizedBox(height: 6),
             Text(label, style: Theme.of(context).textTheme.bodySmall),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Text(
               time.format(context),
               style: Theme.of(context).textTheme.titleLarge?.copyWith(color: AppColors.sleepColor),

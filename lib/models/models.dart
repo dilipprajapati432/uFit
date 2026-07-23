@@ -22,6 +22,9 @@ class UserModel {
   double targetWeightKg;
   int sleepGoalHours;
   String? geminiApiKey;
+  DateTime? lastActiveDate;
+  int currentAppStreak;
+  int longestAppStreak;
 
   UserModel({
     required this.id,
@@ -44,6 +47,9 @@ class UserModel {
     this.targetWeightKg = 70,
     this.sleepGoalHours = 8,
     this.geminiApiKey,
+    this.lastActiveDate,
+    this.currentAppStreak = 0,
+    this.longestAppStreak = 0,
   });
 
   Map<String, dynamic> toMap() {
@@ -68,6 +74,9 @@ class UserModel {
       'targetWeightKg': targetWeightKg,
       'sleepGoalHours': sleepGoalHours,
       'geminiApiKey': geminiApiKey,
+      'lastActiveDate': lastActiveDate?.toIso8601String(),
+      'currentAppStreak': currentAppStreak,
+      'longestAppStreak': longestAppStreak,
     };
   }
 
@@ -93,6 +102,9 @@ class UserModel {
       targetWeightKg: map['targetWeightKg']?.toDouble() ?? 70.0,
       sleepGoalHours: map['sleepGoalHours']?.toInt() ?? 8,
       geminiApiKey: map['geminiApiKey'],
+      lastActiveDate: map['lastActiveDate'] != null ? DateTime.parse(map['lastActiveDate']) : null,
+      currentAppStreak: map['currentAppStreak']?.toInt() ?? 0,
+      longestAppStreak: map['longestAppStreak']?.toInt() ?? 0,
     );
   }
 }

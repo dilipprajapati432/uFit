@@ -1,5 +1,7 @@
 // lib/screens/water/water_screen.dart
 import 'package:fl_chart/fl_chart.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +11,7 @@ import '../../providers/app_providers.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/confetti_overlay.dart';
+
 import 'package:ufit/theme/theme_ext.dart';
 
 class WaterScreen extends ConsumerStatefulWidget {
@@ -53,10 +56,10 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
       child: Scaffold(
         backgroundColor: context.bg,
         appBar: AppBar(
-        title: Text('Water Tracker'),
+        title: const Text('Water Tracker'),
         actions: [
           IconButton(
-            icon: Icon(Icons.settings_rounded),
+            icon: const FaIcon(FontAwesomeIcons.gear, size: 19),
             onPressed: () => _showGoalSheet(context, goal),
           ),
         ],
@@ -67,7 +70,7 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
 
                 // Main progress card
                 GradientCard(
@@ -86,38 +89,38 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
                               children: [
                                 Text(
                                   '${(progress * 100).toInt()}%',
-                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18),
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18),
                                 ),
-                                Text('done', style: TextStyle(color: Colors.white70, fontSize: 10)),
+                                const Text('done', style: TextStyle(color: Colors.white70, fontSize: 10)),
                               ],
                             ),
                           ),
-                          SizedBox(width: 20),
+                          const SizedBox(width: 20),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   '${total}ml',
-                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 28),
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 28),
                                 ),
                                 Text(
                                   'of ${goal}ml goal',
-                                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                                  style: const TextStyle(color: Colors.white70, fontSize: 13),
                                 ),
-                                SizedBox(height: 8),
+                                const SizedBox(height: 8),
                                 Text(
                                   total >= goal
                                       ? '🎉 Goal achieved!'
                                       : '${goal - total}ml remaining',
-                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                                 ),
                               ],
                             ),
                           ),
                         ],
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       // Wave-like progress bar
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
@@ -131,11 +134,11 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
                     ],
                   ),
                 ).animate().fadeIn().scale(begin: const Offset(0.95, 0.95)),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
 
                 // Drink type selector
                 Text('Drink Type', style: Theme.of(context).textTheme.titleMedium),
-                SizedBox(height: 10),
+                const SizedBox(height: 10),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -170,11 +173,11 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
                     }).toList(),
                   ),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
 
                 // Quick add buttons
                 Text('Quick Add', style: Theme.of(context).textTheme.titleMedium),
-                SizedBox(height: 10),
+                const SizedBox(height: 10),
                 Row(
                   children: _quickAmounts.map((ml) => Expanded(
                     child: Padding(
@@ -190,11 +193,11 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
                           ),
                           child: Column(
                             children: [
-                              Text('💧', style: TextStyle(fontSize: 20)),
-                              SizedBox(height: 4),
+                              const Text('💧', style: TextStyle(fontSize: 20)),
+                              const SizedBox(height: 4),
                               Text(
                                 '${ml}ml',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: AppColors.waterColor,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 12,
@@ -207,24 +210,24 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
                     ),
                   )).toList(),
                 ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.2),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
 
                 // Custom amount
                 OutlinedButton.icon(
                   onPressed: () => _showCustomAmountSheet(context),
-                  icon: Icon(Icons.add_rounded),
-                  label: Text('Custom Amount'),
+                  icon: const FaIcon(FontAwesomeIcons.plus, size: 19),
+                  label: const Text('Custom Amount'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.waterColor,
                     side: const BorderSide(color: AppColors.waterColor),
                     minimumSize: const Size(double.infinity, 48),
                   ),
                 ),
-                SizedBox(height: 24),
+                const SizedBox(height: 24),
 
                 // Weekly chart
                 const SectionHeader(title: 'This Week'),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 GlassCard(
                   child: SizedBox(
                     height: 140,
@@ -274,16 +277,16 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
                     ),
                   ),
                 ).animate().fadeIn(delay: 200.ms),
-                SizedBox(height: 24),
+                const SizedBox(height: 24),
 
                 // Today's logs
                 const SectionHeader(title: "Today's Logs"),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 if (logs.isEmpty)
                   GlassCard(
                     child: Center(
                       child: Padding(
-                        padding: EdgeInsets.all(20),
+                        padding: const EdgeInsets.all(20),
                         child: Text('No logs yet today. Stay hydrated! 💧',
                           style: TextStyle(color: context.textSecondary),
                           textAlign: TextAlign.center,
@@ -306,9 +309,9 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
                                 color: AppColors.waterColor.withOpacity(0.15),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: Center(child: Text('💧', style: TextStyle(fontSize: 20))),
+                              child: const Center(child: Text('💧', style: TextStyle(fontSize: 20))),
                             ),
-                            SizedBox(width: 12),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -325,7 +328,7 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
                               ),
                             ),
                             IconButton(
-                              icon: Icon(Icons.delete_outline_rounded, size: 18, color: context.textMuted),
+                              icon: FaIcon(FontAwesomeIcons.trash, size: 14, color: context.textMuted),
                               onPressed: () => ref.read(waterProvider.notifier).deleteWaterLog(log.id),
                             ),
                           ],
@@ -333,7 +336,7 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
                       ).animate().fadeIn(delay: Duration(milliseconds: entry.key * 50)),
                     );
                   }),
-                SizedBox(height: 80),
+                const SizedBox(height: 80),
               ]),
             ),
           ),
@@ -361,7 +364,7 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: context.surface,
-        title: Text('Custom Amount'),
+        title: const Text('Custom Amount'),
         content: TextField(
           controller: ctrl,
           keyboardType: TextInputType.number,
@@ -369,7 +372,7 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
           decoration: const InputDecoration(labelText: 'Amount (ml)', suffixText: 'ml'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () {
               final ml = int.tryParse(ctrl.text.trim());
@@ -383,7 +386,7 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
                 );
               }
             },
-            child: Text('Add'),
+            child: const Text('Add'),
           ),
         ],
       ),
@@ -397,7 +400,7 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
       builder: (_) => StatefulBuilder(
         builder: (ctx, setState) => AlertDialog(
           backgroundColor: context.surface,
-          title: Text('Daily Water Goal'),
+          title: const Text('Daily Water Goal'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -414,7 +417,7 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () {
                 final user = ref.read(userProvider);
@@ -425,7 +428,7 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Water goal updated! 💧')));
               },
-              child: Text('Save'),
+              child: const Text('Save'),
             ),
           ],
         ),

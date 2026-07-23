@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -11,6 +13,7 @@ import '../../models/models.dart';
 import '../../providers/app_providers.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
+
 import 'package:ufit/theme/theme_ext.dart';
 
 class WeightScreen extends ConsumerWidget {
@@ -29,12 +32,12 @@ class WeightScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: context.bg,
-      appBar: AppBar(title: Text('Weight Tracker')),
+      appBar: AppBar(title: const Text('Weight Tracker')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => showAppBottomSheet(context: context, child: const _LogWeightForm()),
         backgroundColor: AppColors.weightColor,
-        icon: Icon(Icons.add_rounded),
-        label: Text('Log Weight'),
+        icon: const FaIcon(FontAwesomeIcons.plus, size: 19),
+        label: const Text('Log Weight'),
       ),
       body: CustomScrollView(
         slivers: [
@@ -42,7 +45,7 @@ class WeightScreen extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
 
                 // Current weight card
                 GradientCard(
@@ -53,24 +56,24 @@ class WeightScreen extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Current Weight', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w500)),
-                            SizedBox(height: 4),
+                            const Text('Current Weight', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w500)),
+                            const SizedBox(height: 4),
                             Text(
                               latest != null ? '${latest.weightKg.toStringAsFixed(1)} kg' : '--',
-                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 32),
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 32),
                             ),
                             if (change != null) ...[
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Row(
                                 children: [
                                   Icon(
-                                    change > 0 ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+                                    change > 0 ? FontAwesomeIcons.arrowUp : FontAwesomeIcons.arrowDown,
                                     color: Colors.white,
                                     size: 16,
                                   ),
                                   Text(
                                     '${change.abs().toStringAsFixed(1)} kg from start',
-                                    style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
                                   ),
                                 ],
                               ),
@@ -86,20 +89,20 @@ class WeightScreen extends ConsumerWidget {
                         ),
                         child: Column(
                           children: [
-                            Text('🎯', style: TextStyle(fontSize: 20)),
-                            SizedBox(height: 4),
+                            const FaIcon(FontAwesomeIcons.bullseye, size: 16, color: Colors.white),
+                            const SizedBox(height: 4),
                             Text(
                               '${target.toStringAsFixed(1)} kg',
-                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14),
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14),
                             ),
-                            Text('Goal', style: TextStyle(color: Colors.white70, fontSize: 10)),
+                            const Text('Goal', style: TextStyle(color: Colors.white70, fontSize: 10)),
                           ],
                         ),
                       ),
                     ],
                   ),
                 ).animate().fadeIn().scale(begin: const Offset(0.95, 0.95)),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
 
                 // BMI card
                 if (bmi != null)
@@ -111,14 +114,14 @@ class WeightScreen extends ConsumerWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text('Body Mass Index (BMI)', style: Theme.of(context).textTheme.bodySmall),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Row(
                                 children: [
                                   Text(
                                     bmi.toStringAsFixed(1),
                                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: _bmiColor(bmi)),
                                   ),
-                                  SizedBox(width: 8),
+                                  const SizedBox(width: 8),
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                     decoration: BoxDecoration(
@@ -138,11 +141,11 @@ class WeightScreen extends ConsumerWidget {
                       ],
                     ),
                   ).animate().fadeIn(delay: 100.ms),
-                SizedBox(height: 24),
+                const SizedBox(height: 24),
 
                 // Chart
                 const SectionHeader(title: 'Weight Trend'),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 GlassCard(
                   child: SizedBox(
                     height: 180,
@@ -166,7 +169,7 @@ class WeightScreen extends ConsumerWidget {
                                     getTitlesWidget: (value, meta) {
                                       final recent = logs.take(10).toList().reversed.toList();
                                       final idx = value.toInt();
-                                      if (idx < 0 || idx >= recent.length) return SizedBox();
+                                      if (idx < 0 || idx >= recent.length) return const SizedBox();
                                       return Text(
                                         DateFormat('d/M').format(recent[idx].date),
                                         style: TextStyle(color: context.textSecondary, fontSize: 9),
@@ -211,10 +214,10 @@ class WeightScreen extends ConsumerWidget {
                           ),
                   ),
                 ).animate().fadeIn(delay: 200.ms),
-                SizedBox(height: 24),
+                const SizedBox(height: 24),
 
                 const SectionHeader(title: 'History'),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
               ]),
             ),
           ),
@@ -223,7 +226,7 @@ class WeightScreen extends ConsumerWidget {
               child: Padding(
                 padding: EdgeInsets.symmetric(vertical: 40),
                 child: EmptyState(
-                  emoji: '⚖️',
+                  icon: FontAwesomeIcons.scaleBalanced,
                   title: 'No weight logs yet',
                   subtitle: 'Start tracking your weight to see your progress over time',
                 ),
@@ -256,7 +259,7 @@ class WeightScreen extends ConsumerWidget {
                                             child: Image.file(File(log.photoPath!), fit: BoxFit.contain),
                                           ),
                                           IconButton(
-                                            icon: const Icon(Icons.close, color: Colors.white),
+                                            icon: const FaIcon(FontAwesomeIcons.xmark, color: Colors.white, size: 19),
                                             onPressed: () => Navigator.pop(ctx),
                                           ),
                                         ],
@@ -278,10 +281,10 @@ class WeightScreen extends ConsumerWidget {
                                         )
                                       : null,
                                 ),
-                                child: log.photoPath == null ? Center(child: Text('⚖️', style: TextStyle(fontSize: 20))) : null,
+                                child: log.photoPath == null ? const Center(child: FaIcon(FontAwesomeIcons.scaleBalanced, size: 16, color: AppColors.weightColor)) : null,
                               ),
                             ),
-                            SizedBox(width: 12),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -305,7 +308,7 @@ class WeightScreen extends ConsumerWidget {
                               ),
                             ),
                             IconButton(
-                              icon: Icon(Icons.delete_outline_rounded, size: 18, color: context.textMuted),
+                              icon: FaIcon(FontAwesomeIcons.trash, size: 14, color: context.textMuted),
                               onPressed: () => ref.read(weightProvider.notifier).deleteLog(log.id),
                             ),
                           ],
@@ -372,9 +375,9 @@ class _LogWeightFormState extends ConsumerState<_LogWeightForm> {
     return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text('Log Weight', style: Theme.of(context).textTheme.headlineSmall),
-          SizedBox(height: 24),
+          const SizedBox(height: 24),
 
           Center(
             child: Text(
@@ -382,7 +385,7 @@ class _LogWeightFormState extends ConsumerState<_LogWeightForm> {
               style: Theme.of(context).textTheme.displayLarge?.copyWith(color: AppColors.weightColor),
             ),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           Slider(
             value: _weight,
             min: 30,
@@ -397,43 +400,43 @@ class _LogWeightFormState extends ConsumerState<_LogWeightForm> {
             children: [
               IconButton.filled(
                 onPressed: () => setState(() => _weight = double.parse((_weight - 0.1).toStringAsFixed(1))),
-                icon: Icon(Icons.remove),
+                icon: const FaIcon(FontAwesomeIcons.minus, size: 19),
                 style: IconButton.styleFrom(backgroundColor: context.card),
               ),
-              SizedBox(width: 20),
+              const SizedBox(width: 20),
               IconButton.filled(
                 onPressed: () => setState(() => _weight = double.parse((_weight + 0.1).toStringAsFixed(1))),
-                icon: Icon(Icons.add),
+                icon: const FaIcon(FontAwesomeIcons.plus, size: 19),
                 style: IconButton.styleFrom(backgroundColor: context.card),
               ),
             ],
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
 
           TextField(
             controller: _notesCtrl,
             decoration: const InputDecoration(labelText: 'Notes (optional)'),
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           
           Text('Body Measurements (optional)', style: Theme.of(context).textTheme.titleSmall),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(child: TextField(controller: _chestCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Chest (cm)', filled: true))),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(child: TextField(controller: _waistCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Waist (cm)', filled: true))),
             ],
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(child: TextField(controller: _armCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Arms (cm)', filled: true))),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(child: TextField(controller: _legCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Legs (cm)', filled: true))),
             ],
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
 
           // Progress Photo Section
           if (_photoPath != null) ...[
@@ -441,11 +444,11 @@ class _LogWeightFormState extends ConsumerState<_LogWeightForm> {
               borderRadius: BorderRadius.circular(12),
               child: Image.file(File(_photoPath!), height: 120, width: double.infinity, fit: BoxFit.cover),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             TextButton.icon(
               onPressed: () => setState(() => _photoPath = null),
-              icon: Icon(Icons.delete_outline, color: AppColors.error),
-              label: Text('Remove Photo', style: TextStyle(color: AppColors.error)),
+              icon: const FaIcon(FontAwesomeIcons.trash, color: AppColors.error, size: 19),
+              label: const Text('Remove Photo', style: TextStyle(color: AppColors.error)),
             ),
           ] else ...[
             SizedBox(
@@ -453,11 +456,11 @@ class _LogWeightFormState extends ConsumerState<_LogWeightForm> {
               child: OutlinedButton.icon(
                 onPressed: _isSavingImage ? null : _pickImage,
                 icon: _isSavingImage 
-                    ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                    : Icon(Icons.camera_alt_outlined),
-                label: Text('Add Progress Photo'),
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const FaIcon(FontAwesomeIcons.camera, size: 19),
+                label: const Text('Add Progress Photo'),
                 style: OutlinedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   side: BorderSide(color: context.border),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
@@ -465,17 +468,17 @@ class _LogWeightFormState extends ConsumerState<_LogWeightForm> {
             ),
           ],
           
-          SizedBox(height: 28),
+          const SizedBox(height: 28),
 
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () => _save(),
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.weightColor),
-              child: Text('Save Weight'),
+              child: const Text('Save Weight'),
             ),
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
         ],
     );
   }
@@ -492,7 +495,7 @@ class _LogWeightFormState extends ConsumerState<_LogWeightForm> {
         setState(() => _photoPath = savedImage.path);
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to save image')));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to save image')));
         }
       } finally {
         if (mounted) setState(() => _isSavingImage = false);
@@ -523,7 +526,7 @@ class _LogWeightFormState extends ConsumerState<_LogWeightForm> {
 
     if (mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Weight logged! ⚖️')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Weight logged!')));
     }
   }
 

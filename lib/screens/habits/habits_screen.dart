@@ -1,5 +1,7 @@
 // lib/screens/habits/habits_screen.dart
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
@@ -37,13 +39,29 @@ class _HabitsScreenState extends ConsumerState<HabitsScreen>
     final habits = ref.watch(habitsProvider);
     final isPremium = ref.watch(premiumProvider);
 
+    ref.listen<String?>(tabScrollEventProvider, (prev, next) {
+      if (next == '/habits') {
+        final controller = PrimaryScrollController.of(context);
+        if (controller.hasClients) {
+          controller.animateTo(
+            0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ref.read(tabScrollEventProvider.notifier).state = null;
+        });
+      }
+    });
+
     return Scaffold(
       backgroundColor: context.bg,
       appBar: AppBar(
-        title: Text('Habits'),
+        title: const Text('Habits'),
         actions: [
           IconButton(
-            icon: Icon(Icons.add_rounded),
+            icon: const FaIcon(FontAwesomeIcons.plus, size: 19),
             onPressed: () => _showAddHabitSheet(context, isPremium, habits.length),
           ),
         ],
@@ -157,7 +175,7 @@ class _TodayTab extends ConsumerWidget {
                     weekendStyle: TextStyle(color: context.textSecondary, fontSize: 11),
                   ),
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
 
                 // Progress summary
                 if (todayHabits.isNotEmpty)
@@ -171,10 +189,10 @@ class _TodayTab extends ConsumerWidget {
                           strokeWidth: 5,
                           child: Text(
                             '$completed',
-                            style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 16),
+                            style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 16),
                           ),
                         ),
-                        SizedBox(width: 16),
+                        const SizedBox(width: 16),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -183,7 +201,7 @@ class _TodayTab extends ConsumerWidget {
                                 '$completed of ${todayHabits.length} completed',
                                 style: Theme.of(context).textTheme.titleMedium,
                               ),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               LinearProgressIndicator(
                                 value: todayHabits.isEmpty ? 0 : completed / todayHabits.length,
                                 backgroundColor: context.border,
@@ -197,7 +215,7 @@ class _TodayTab extends ConsumerWidget {
                       ],
                     ),
                   ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
               ],
             ),
           ),
@@ -381,7 +399,7 @@ class _HabitCard extends StatelessWidget {
             onPressed: (_) => onEdit(),
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
-            icon: Icons.edit_rounded,
+            icon: FontAwesomeIcons.pen,
             label: 'Edit',
             borderRadius: BorderRadius.circular(16),
           ),
@@ -389,7 +407,7 @@ class _HabitCard extends StatelessWidget {
             onPressed: (_) => onDelete(),
             backgroundColor: AppColors.error,
             foregroundColor: Colors.white,
-            icon: Icons.delete_rounded,
+            icon: FontAwesomeIcons.trash,
             label: 'Delete',
             borderRadius: BorderRadius.circular(16),
           ),
@@ -407,10 +425,10 @@ class _HabitCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Center(
-                child: Text(habit.icon, style: TextStyle(fontSize: 24)),
+                child: Text(habit.icon, style: const TextStyle(fontSize: 24)),
               ),
             ),
-            SizedBox(width: 14),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -422,15 +440,15 @@ class _HabitCard extends StatelessWidget {
                       color: isCompleted ? context.textSecondary : null,
                     ),
                   ),
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   if (showStats)
                     Row(
                       children: [
                         Text(
                           '🔥 ${habit.currentStreak} streak',
-                          style: TextStyle(fontSize: 11, color: AppColors.accentOrange),
+                          style: const TextStyle(fontSize: 11, color: AppColors.accentOrange),
                         ),
-                        SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         Text(
                           '${(habit.getCompletionRate() * 100).toInt()}% rate',
                           style: TextStyle(fontSize: 11, color: context.textSecondary),
@@ -482,7 +500,7 @@ class _HabitCard extends StatelessWidget {
             // direct Edit/Delete menu button
             const SizedBox(width: 4),
             PopupMenuButton<String>(
-              icon: Icon(Icons.more_vert_rounded, color: context.textSecondary, size: 20),
+              icon: FaIcon(FontAwesomeIcons.ellipsisVertical, color: context.textSecondary, size: 16),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 100),
               color: context.card,
@@ -499,19 +517,19 @@ class _HabitCard extends StatelessWidget {
                   value: 'edit',
                   child: Row(
                     children: [
-                      Icon(Icons.edit_rounded, size: 16, color: context.textSecondary),
+                      FaIcon(FontAwesomeIcons.pen, size: 12, color: context.textSecondary),
                       const SizedBox(width: 8),
                       Text('Edit', style: TextStyle(color: context.text, fontSize: 13)),
                     ],
                   ),
                 ),
-                PopupMenuItem(
+                const PopupMenuItem(
                   value: 'delete',
                   child: Row(
                     children: [
-                      Icon(Icons.delete_rounded, size: 16, color: AppColors.error),
-                      const SizedBox(width: 8),
-                      Text('Delete', style: const TextStyle(color: AppColors.error, fontSize: 13)),
+                      FaIcon(FontAwesomeIcons.trash, size: 12, color: AppColors.error),
+                      SizedBox(width: 8),
+                      Text('Delete', style: TextStyle(color: AppColors.error, fontSize: 13)),
                     ],
                   ),
                 ),
@@ -579,13 +597,13 @@ class _AddHabitFormState extends ConsumerState<_AddHabitForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Text(widget.existingHabit == null ? 'Create New Habit' : 'Edit Habit', style: Theme.of(context).textTheme.headlineSmall),
-        SizedBox(height: 24),
+        const SizedBox(height: 24),
 
         // Icon picker
         Text('Choose Icon', style: Theme.of(context).textTheme.titleSmall),
-        SizedBox(height: 10),
+        const SizedBox(height: 10),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -602,26 +620,26 @@ class _AddHabitFormState extends ConsumerState<_AddHabitForm> {
                   color: _selectedIcon == icon ? AppColors.primary : context.border,
                 ),
               ),
-              child: Center(child: Text(icon, style: TextStyle(fontSize: 22))),
+              child: Center(child: Text(icon, style: const TextStyle(fontSize: 22))),
             ),
           )).toList(),
         ),
-        SizedBox(height: 20),
+        const SizedBox(height: 20),
 
         TextField(
           controller: _nameCtrl,
           decoration: const InputDecoration(labelText: 'Habit Name *', hintText: 'e.g. Drink Water'),
         ),
-        SizedBox(height: 14),
+        const SizedBox(height: 14),
         TextField(
           controller: _descCtrl,
           decoration: const InputDecoration(labelText: 'Description (optional)'),
         ),
-        SizedBox(height: 20),
+        const SizedBox(height: 20),
 
         // Frequency
         Text('Frequency', style: Theme.of(context).textTheme.titleSmall),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -633,7 +651,7 @@ class _AddHabitFormState extends ConsumerState<_AddHabitForm> {
           ],
         ),
         if (_frequency == 'custom') ...[
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Wrap(
             spacing: 6,
             runSpacing: 6,
@@ -648,11 +666,11 @@ class _AddHabitFormState extends ConsumerState<_AddHabitForm> {
             ],
           ),
         ],
-        SizedBox(height: 20),
+        const SizedBox(height: 20),
 
         // Category
         Text('Category', style: Theme.of(context).textTheme.titleSmall),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 6,
@@ -726,11 +744,11 @@ class _AddHabitFormState extends ConsumerState<_AddHabitForm> {
                   setState(() => _reminderEnabled = false);
                 }
               },
-              activeColor: AppColors.primary,
+              activeThumbColor: AppColors.primary,
             ),
           ],
         ),
-        SizedBox(height: 28),
+        const SizedBox(height: 28),
 
         SizedBox(
           width: double.infinity,
@@ -739,7 +757,7 @@ class _AddHabitFormState extends ConsumerState<_AddHabitForm> {
             child: Text(widget.existingHabit == null ? 'Create Habit' : 'Save Changes'),
           ),
         ),
-        SizedBox(height: 20),
+        const SizedBox(height: 20),
       ],
     );
   }

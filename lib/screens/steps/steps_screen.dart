@@ -1,14 +1,16 @@
 // lib/screens/steps/steps_screen.dart
 import 'package:fl_chart/fl_chart.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../models/models.dart';
 import '../../providers/app_providers.dart';
-import '../../theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/confetti_overlay.dart';
+
 import 'package:ufit/theme/theme_ext.dart';
 
 class StepsScreen extends ConsumerStatefulWidget {
@@ -41,6 +43,7 @@ class _StepsScreenState extends ConsumerState<StepsScreen> {
     final goal = user?.dailyStepsGoal ?? 10000;
     final total = ref.read(stepsProvider.notifier).todayTotalSteps;
     final progress = (total / goal).clamp(0.0, 1.0);
+    final pedStatus = ref.read(stepsProvider.notifier).pedestrianStatus;
     final weeklyData = _computeWeeklyData(logs);
     final maxWeeklyValue = weeklyData.values.fold<int>(0, (max, v) => v > max ? v : max);
     final chartMaxY = maxWeeklyValue > goal ? (maxWeeklyValue * 1.2).toDouble() : (goal * 1.5).toDouble();
@@ -53,7 +56,7 @@ class _StepsScreenState extends ConsumerState<StepsScreen> {
         title: const Text('Steps Tracker'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_rounded),
+            icon: const FaIcon(FontAwesomeIcons.gear, size: 19),
             onPressed: () => _showGoalSheet(context, goal),
           ),
         ],
@@ -88,15 +91,15 @@ class _StepsScreenState extends ConsumerState<StepsScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
-                                  ref.read(stepsProvider.notifier).pedestrianStatus == 'walking' 
-                                      ? Icons.directions_walk 
-                                      : Icons.accessibility_new,
+                                  pedStatus == 'walking' 
+                                      ? FontAwesomeIcons.personWalking 
+                                      : (pedStatus == 'stopped' ? FontAwesomeIcons.person : FontAwesomeIcons.personRunning),
                                   color: Colors.white,
                                   size: 14,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  ref.read(stepsProvider.notifier).pedestrianStatus.toUpperCase(),
+                                  pedStatus.toUpperCase(),
                                   style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                                 ),
                               ],
@@ -139,7 +142,7 @@ class _StepsScreenState extends ConsumerState<StepsScreen> {
                                 const SizedBox(height: 8),
                                 Text(
                                   total >= goal
-                                      ? '🎉 Goal achieved!'
+                                      ? 'Goal achieved!'
                                       : '${goal - total} steps remaining',
                                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                                 ),
@@ -182,7 +185,7 @@ class _StepsScreenState extends ConsumerState<StepsScreen> {
                           ),
                           child: Column(
                             children: [
-                              const Text('🚶', style: TextStyle(fontSize: 20)),
+                              const FaIcon(FontAwesomeIcons.personWalking, size: 16, color: Colors.blueAccent),
                               const SizedBox(height: 4),
                               Text(
                                 '+$stepsCount',
@@ -204,7 +207,7 @@ class _StepsScreenState extends ConsumerState<StepsScreen> {
                 // Custom amount
                 OutlinedButton.icon(
                   onPressed: () => _showCustomAmountSheet(context),
-                  icon: const Icon(Icons.add_rounded),
+                  icon: const FaIcon(FontAwesomeIcons.plus, size: 19),
                   label: const Text('Custom Entry'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.blueAccent,
@@ -276,7 +279,7 @@ class _StepsScreenState extends ConsumerState<StepsScreen> {
                     child: Center(
                       child: Padding(
                         padding: const EdgeInsets.all(20),
-                        child: Text('No steps logged yet today. Let\'s get moving! 🚶',
+                        child: Text('No steps logged yet today. Let\'s get moving!',
                           style: TextStyle(color: context.textSecondary),
                           textAlign: TextAlign.center,
                         ),
@@ -298,7 +301,7 @@ class _StepsScreenState extends ConsumerState<StepsScreen> {
                                 color: Colors.blueAccent.withOpacity(0.15),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Center(child: Text('🚶', style: TextStyle(fontSize: 20))),
+                              child: const Center(child: FaIcon(FontAwesomeIcons.personWalking, size: 16, color: Colors.blueAccent)),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -317,7 +320,7 @@ class _StepsScreenState extends ConsumerState<StepsScreen> {
                               ),
                             ),
                             IconButton(
-                              icon: Icon(Icons.delete_outline_rounded, size: 18, color: context.textMuted),
+                              icon: FaIcon(FontAwesomeIcons.trash, size: 14, color: context.textMuted),
                               onPressed: () => ref.read(stepsProvider.notifier).deleteStepLog(log.id),
                             ),
                           ],
@@ -344,7 +347,7 @@ class _StepsScreenState extends ConsumerState<StepsScreen> {
     );
     ref.read(stepsProvider.notifier).addStepLog(log);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Logged $steps steps 🚶'), duration: const Duration(seconds: 1)),
+      SnackBar(content: Text('Logged $steps steps'), duration: const Duration(seconds: 1)),
     );
   }
 

@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,7 +8,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/fasting_provider.dart';
 import 'package:ufit/theme/theme_ext.dart';
-import '../../widgets/common_widgets.dart';
 
 class FastingScreen extends ConsumerStatefulWidget {
   const FastingScreen({super.key});
@@ -137,7 +138,7 @@ class _FastingScreenState extends ConsumerState<FastingScreen> {
                     Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.local_fire_department_rounded, size: 72, color: Colors.grey.withOpacity(0.3)),
+                        FaIcon(FontAwesomeIcons.fire, size: 57, color: Colors.grey.withOpacity(0.3)),
                         const SizedBox(height: 16),
                         Text(
                           'Select your fast',
@@ -279,9 +280,9 @@ class FastingTimerPainter extends CustomPainter {
     final sweepAngle = 2 * math.pi * progress;
     
     // Stunning glowing gradient arc
-    final gradient = SweepGradient(
-      colors: const [Color(0xFFFF9F43), Color(0xFFFF5252), Color(0xFFFF9F43)],
-      stops: const [0.0, 0.5, 1.0],
+    const gradient = SweepGradient(
+      colors: [Color(0xFFFF9F43), Color(0xFFFF5252), Color(0xFFFF9F43)],
+      stops: [0.0, 0.5, 1.0],
       startAngle: -math.pi / 2,
       endAngle: -math.pi / 2 + 2 * math.pi,
     );

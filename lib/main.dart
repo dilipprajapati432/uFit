@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'app_router.dart';
 import 'firebase_options.dart';
 import 'providers/app_providers.dart';
@@ -24,6 +25,9 @@ void main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   
   await dotenv.load(fileName: ".env");
+  
+  // Initialize Mobile Ads
+  await MobileAds.instance.initialize();
 
   // Initialize notifications asynchronously in the background
   NotificationService.init();

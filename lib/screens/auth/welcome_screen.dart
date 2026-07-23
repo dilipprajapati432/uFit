@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
+
 import 'package:ufit/theme/theme_ext.dart';
 
 class WelcomeScreen extends ConsumerWidget {
@@ -38,7 +41,7 @@ class WelcomeScreen extends ConsumerWidget {
                 width: 100,
                 height: 100,
               ).animate().scale(duration: 700.ms, curve: Curves.elasticOut),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
 
               RichText(
                 text: TextSpan(
@@ -52,27 +55,27 @@ class WelcomeScreen extends ConsumerWidget {
                   ],
                 ),
               ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.3),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text(
                 'Your all-in-one health\n& fitness companion',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: context.textSecondary, height: 1.5),
                 textAlign: TextAlign.center,
               ).animate().fadeIn(delay: 300.ms),
 
-              SizedBox(height: 48),
+              const SizedBox(height: 48),
 
               // Feature pills
-              Wrap(
+              const Wrap(
                 spacing: 10,
                 runSpacing: 10,
                 alignment: WrapAlignment.center,
-                children: const [
-                  _FeaturePill('✅ Habits'),
-                  _FeaturePill('💧 Water'),
-                  _FeaturePill('💪 Workout'),
-                  _FeaturePill('🌙 Sleep'),
-                  _FeaturePill('⚖️ Weight'),
-                  _FeaturePill('😊 Mood'),
+                children: [
+                  _FeaturePill(label: 'Habits', icon: FontAwesomeIcons.squareCheck),
+                  _FeaturePill(label: 'Water', icon: FontAwesomeIcons.droplet),
+                  _FeaturePill(label: 'Workout', icon: FontAwesomeIcons.dumbbell),
+                  _FeaturePill(label: 'Sleep', icon: FontAwesomeIcons.moon),
+                  _FeaturePill(label: 'Weight', icon: FontAwesomeIcons.scaleBalanced),
+                  _FeaturePill(label: 'Mood', icon: FontAwesomeIcons.faceSmile),
                 ],
               ).animate().fadeIn(delay: 400.ms),
 
@@ -87,10 +90,10 @@ class WelcomeScreen extends ConsumerWidget {
                   style: ElevatedButton.styleFrom(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                  child: Text('Get Started', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                  child: const Text('Get Started', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
                 ),
               ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.3),
-              SizedBox(height: 14),
+              const SizedBox(height: 14),
 
               // Google Sign-In shortcut
               SizedBox(
@@ -109,14 +112,14 @@ class WelcomeScreen extends ConsumerWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('G', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
-                      SizedBox(width: 10),
+                      const Text('G', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                      const SizedBox(width: 10),
                       Text('Continue with Google', style: TextStyle(color: context.text, fontSize: 15, fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ),
               ).animate().fadeIn(delay: 550.ms).slideY(begin: 0.3),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
 
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -124,12 +127,12 @@ class WelcomeScreen extends ConsumerWidget {
                   Text('Already have an account? ', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.textSecondary)),
                   GestureDetector(
                     onTap: () => context.push('/login'),
-                    child: Text('Sign In', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
+                    child: const Text('Sign In', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
                   ),
                 ],
               ).animate().fadeIn(delay: 600.ms),
 
-              SizedBox(height: 32),
+              const SizedBox(height: 32),
             ],
           ),
         ),
@@ -140,7 +143,8 @@ class WelcomeScreen extends ConsumerWidget {
 
 class _FeaturePill extends StatelessWidget {
   final String label;
-  const _FeaturePill(this.label);
+  final IconData icon;
+  const _FeaturePill({required this.label, required this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -151,7 +155,14 @@ class _FeaturePill extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: context.border),
       ),
-      child: Text(label, style: TextStyle(fontSize: 13, color: context.text, fontWeight: FontWeight.w500)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppColors.primary),
+          const SizedBox(width: 6),
+          Text(label, style: TextStyle(fontSize: 13, color: context.text, fontWeight: FontWeight.w500)),
+        ],
+      ),
     );
   }
 }

@@ -38,25 +38,25 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   final _pages = [
-    _OnboardingPage(
+    const _OnboardingPage(
       emoji: '🏋️',
       title: 'Welcome to uFit',
       subtitle: 'Your all-in-one health & fitness companion. Track habits, workouts, sleep, water, and more.',
       gradient: AppColors.habitGradient,
     ),
-    _OnboardingPage(
+    const _OnboardingPage(
       emoji: '💧',
       title: 'Track Everything',
       subtitle: 'Water intake, sleep quality, daily workouts, body weight, mood, and daily habits — all in one beautiful app.',
       gradient: AppColors.waterGradient,
     ),
-    _OnboardingPage(
+    const _OnboardingPage(
       emoji: '📊',
       title: 'Visualize Progress',
       subtitle: 'Beautiful charts and insights show your progress over time. Stay motivated with streaks and achievements.',
       gradient: AppColors.workoutGradient,
     ),
-    _OnboardingPage(
+    const _OnboardingPage(
       emoji: '🎯',
       title: 'Achieve Your Goals',
       subtitle: 'Set personal goals and get daily reminders. Your health journey starts with one small step.',

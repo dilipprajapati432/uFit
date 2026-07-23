@@ -55,7 +55,7 @@ class AuthService {
       // Block registration if they are trying to SIGN IN
       if (cred.additionalUserInfo?.isNewUser == true && !isSignUp) {
         await cred.user?.delete();
-        await _google.signOut().catchError((_) {});
+        await _google.signOut().catchError((_) => null);
         await _auth.signOut();
         throw FirebaseAuthException(
           code: 'user-not-found',
@@ -121,7 +121,7 @@ class AuthService {
       await _db.collection('users').doc(uid).delete();
 
       // Clear Google Sign-In cache if they were signed in with Google
-      await _google.signOut().catchError((_) {});
+      await _google.signOut().catchError((_) => null);
     }
   }
 

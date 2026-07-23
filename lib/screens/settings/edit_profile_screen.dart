@@ -1,5 +1,7 @@
 // lib/screens/settings/edit_profile_screen.dart
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +11,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
+
 import 'package:ufit/theme/theme_ext.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
@@ -67,16 +70,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             Center(
               child: Stack(
                 children: [
-                  CircleAvatar(
+                  UserAvatar(
                     radius: 48,
-                    backgroundColor: AppColors.primary.withOpacity(0.2),
-                    backgroundImage: firebaseUser?.photoURL != null ? NetworkImage(firebaseUser!.photoURL!) : null,
-                    child: firebaseUser?.photoURL == null
-                        ? Text(
-                            _nameCtrl.text.isNotEmpty ? _nameCtrl.text[0].toUpperCase() : 'U',
-                            style: const TextStyle(color: AppColors.primary, fontSize: 36, fontWeight: FontWeight.w800),
-                          )
-                        : null,
+                    photoUrl: firebaseUser?.photoURL,
+                    initial: _nameCtrl.text.isNotEmpty ? _nameCtrl.text[0].toUpperCase() : 'U',
+                    isPremium: false,
                   ),
                   Positioned(
                     bottom: 0,
@@ -85,8 +83,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       onTap: _pickImage,
                       child: Container(
                         width: 32, height: 32,
-                        decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                        child: const Icon(Icons.camera_alt_rounded, size: 16, color: Colors.white),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary, 
+                          shape: BoxShape.circle,
+                          border: Border.all(color: context.surface, width: 2.5),
+                          boxShadow: [
+                            BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 2))
+                          ]
+                        ),
+                        child: const Center(child: FaIcon(FontAwesomeIcons.camera, size: 13, color: Colors.white)),
                       ),
                     ),
                   ),
@@ -99,7 +104,18 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             TextField(
               controller: _nameCtrl,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(prefixIcon: Icon(Icons.person_outline_rounded)),
+              decoration: InputDecoration(
+                hintText: 'Enter your full name',
+                prefixIcon: Container(
+                  margin: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.person_rounded, size: 18, color: AppColors.primary),
+                ),
+              ),
               onChanged: (_) => setState(() {}),
             ).animate().fadeIn(delay: 100.ms),
             const SizedBox(height: 20),
@@ -107,11 +123,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             _label('Gender'),
             Row(
               children: [
-                Expanded(child: _GenderBtn('male', '👨', 'Male', _gender, (v) => setState(() => _gender = v))),
+                Expanded(child: _GenderBtn('male', FontAwesomeIcons.user, 'Male', _gender, (v) => setState(() => _gender = v))),
                 const SizedBox(width: 10),
-                Expanded(child: _GenderBtn('female', '👩', 'Female', _gender, (v) => setState(() => _gender = v))),
+                Expanded(child: _GenderBtn('female', FontAwesomeIcons.user, 'Female', _gender, (v) => setState(() => _gender = v))),
                 const SizedBox(width: 10),
-                Expanded(child: _GenderBtn('other', '🧑', 'Other', _gender, (v) => setState(() => _gender = v))),
+                Expanded(child: _GenderBtn('other', FontAwesomeIcons.users, 'Other', _gender, (v) => setState(() => _gender = v))),
               ],
             ).animate().fadeIn(delay: 150.ms),
             const SizedBox(height: 20),
@@ -132,10 +148,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _GoalChip('lose_weight', '🔥 Lose Weight', _goal, (v) => setState(() => _goal = v)),
-                _GoalChip('gain_muscle', '💪 Gain Muscle', _goal, (v) => setState(() => _goal = v)),
-                _GoalChip('maintain', '⚖️ Stay Fit', _goal, (v) => setState(() => _goal = v)),
-                _GoalChip('active_lifestyle', '🏃 Active Life', _goal, (v) => setState(() => _goal = v)),
+                _GoalChip('lose_weight', FontAwesomeIcons.fire, 'Lose Weight', _goal, (v) => setState(() => _goal = v)),
+                _GoalChip('gain_muscle', FontAwesomeIcons.dumbbell, 'Gain Muscle', _goal, (v) => setState(() => _goal = v)),
+                _GoalChip('maintain', FontAwesomeIcons.scaleBalanced, 'Stay Fit', _goal, (v) => setState(() => _goal = v)),
+                _GoalChip('active_lifestyle', FontAwesomeIcons.personRunning, 'Active Life', _goal, (v) => setState(() => _goal = v)),
               ],
             ).animate().fadeIn(delay: 300.ms),
             const SizedBox(height: 32),
@@ -203,9 +219,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 }
 
 class _GenderBtn extends StatelessWidget {
-  final String value, emoji, label, selected;
+  final String value, label, selected;
+  final IconData icon;
   final Function(String) onTap;
-  const _GenderBtn(this.value, this.emoji, this.label, this.selected, this.onTap);
+  const _GenderBtn(this.value, this.icon, this.label, this.selected, this.onTap);
 
   @override
   Widget build(BuildContext context) {
@@ -222,7 +239,7 @@ class _GenderBtn extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 22)),
+            Icon(icon, size: 22, color: isSelected ? AppColors.primary : context.textSecondary),
             const SizedBox(height: 4),
             Text(label, style: TextStyle(fontSize: 12, color: isSelected ? AppColors.primary : context.textSecondary, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400)),
           ],
@@ -234,8 +251,9 @@ class _GenderBtn extends StatelessWidget {
 
 class _GoalChip extends StatelessWidget {
   final String value, label, selected;
+  final IconData icon;
   final Function(String) onTap;
-  const _GoalChip(this.value, this.label, this.selected, this.onTap);
+  const _GoalChip(this.value, this.icon, this.label, this.selected, this.onTap);
 
   @override
   Widget build(BuildContext context) {
@@ -250,7 +268,14 @@ class _GoalChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: isSelected ? AppColors.primary : context.border, width: isSelected ? 1.5 : 1),
         ),
-        child: Text(label, style: TextStyle(fontSize: 13, color: isSelected ? AppColors.primary : context.textSecondary, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: isSelected ? AppColors.primary : context.textSecondary),
+            const SizedBox(width: 6),
+            Text(label, style: TextStyle(fontSize: 13, color: isSelected ? AppColors.primary : context.textSecondary, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400)),
+          ],
+        ),
       ),
     );
   }

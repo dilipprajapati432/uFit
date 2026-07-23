@@ -1,8 +1,12 @@
 // lib/widgets/common_widgets.dart
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_theme.dart';
+
 import 'package:ufit/theme/theme_ext.dart';
+import 'dart:ui';
 
 // ─── GRADIENT CARD ───────────────────────────────────────────
 class GradientCard extends StatelessWidget {
@@ -157,10 +161,21 @@ class StatTile extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
+                  gradient: LinearGradient(
+                    colors: [color.withOpacity(0.2), color.withOpacity(0.05)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: color.withOpacity(0.3)),
                 ),
-                child: Icon(icon, color: color, size: 18),
+                child: Center(
+                  child: FaIcon(
+                    icon, 
+                    size: 18 * 0.8, 
+                    color: color,
+                  ),
+                ),
               ),
             ],
           ),
@@ -176,7 +191,7 @@ class StatTile extends StatelessWidget {
                 ),
               ),
               if (unit != null) ...[
-                SizedBox(width: 2),
+                const SizedBox(width: 2),
                 Padding(
                   padding: const EdgeInsets.only(bottom: 3),
                   child: Text(
@@ -187,7 +202,7 @@ class StatTile extends StatelessWidget {
               ],
             ],
           ),
-          SizedBox(height: 2),
+          const SizedBox(height: 2),
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall,
@@ -203,12 +218,14 @@ class SectionHeader extends StatelessWidget {
   final String title;
   final String? action;
   final VoidCallback? onAction;
+  final IconData? icon;
 
   const SectionHeader({
     super.key,
     required this.title,
     this.action,
     this.onAction,
+    this.icon,
   });
 
   @override
@@ -217,7 +234,15 @@ class SectionHeader extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(title, style: Theme.of(context).textTheme.headlineSmall),
+        Row(
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 20, color: AppColors.primary),
+              const SizedBox(width: 8),
+            ],
+            Text(title, style: Theme.of(context).textTheme.headlineSmall),
+          ],
+        ),
         if (action != null)
           TextButton(
             onPressed: onAction,
@@ -229,7 +254,7 @@ class SectionHeader extends StatelessWidget {
             ),
             child: Text(
               action!,
-              style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
+              style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
             ),
           ),
       ],
@@ -254,19 +279,19 @@ class PremiumGateBanner extends StatelessWidget {
       gradient: AppColors.primaryGradient,
       child: Row(
         children: [
-          Text('✨', style: TextStyle(fontSize: 28)),
-          SizedBox(width: 12),
+          const FaIcon(FontAwesomeIcons.wandMagicSparkles, size: 22, color: Colors.white),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'uFit Pro Feature',
                   style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
                 ),
                 Text(
                   '$featureName requires Pro',
-                  style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
+                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -279,7 +304,7 @@ class PremiumGateBanner extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: Text('Upgrade', style: TextStyle(fontWeight: FontWeight.w700)),
+            child: const Text('Upgrade', style: TextStyle(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -289,7 +314,8 @@ class PremiumGateBanner extends StatelessWidget {
 
 // ─── EMPTY STATE ─────────────────────────────────────────────
 class EmptyState extends StatelessWidget {
-  final String emoji;
+  final String? emoji;
+  final IconData? icon;
   final String title;
   final String subtitle;
   final String? actionLabel;
@@ -297,7 +323,8 @@ class EmptyState extends StatelessWidget {
 
   const EmptyState({
     super.key,
-    required this.emoji,
+    this.emoji,
+    this.icon,
     required this.title,
     required this.subtitle,
     this.actionLabel,
@@ -312,14 +339,17 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(emoji, style: TextStyle(fontSize: 64)),
-            SizedBox(height: 16),
+            if (icon != null)
+              Icon(icon, size: 64, color: AppColors.primary)
+            else if (emoji != null)
+              Text(emoji!, style: const TextStyle(fontSize: 64)),
+            const SizedBox(height: 16),
             Text(
               title,
               style: Theme.of(context).textTheme.headlineSmall,
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
               subtitle,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -328,7 +358,7 @@ class EmptyState extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             if (actionLabel != null && onAction != null) ...[
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: onAction,
                 child: Text(actionLabel!),
@@ -364,13 +394,13 @@ class LoadingShimmerCard extends StatelessWidget {
 
 // ─── ACHIEVEMENT BADGE ───────────────────────────────────────
 class AchievementBadge extends StatelessWidget {
-  final String emoji;
+  final IconData icon;
   final String title;
   final bool isUnlocked;
 
   const AchievementBadge({
     super.key,
-    required this.emoji,
+    required this.icon,
     required this.title,
     this.isUnlocked = false,
   });
@@ -392,16 +422,14 @@ class AchievementBadge extends StatelessWidget {
             ),
           ),
           child: Center(
-            child: Text(
-              emoji,
-              style: TextStyle(
-                fontSize: 24,
-                color: isUnlocked ? null : Colors.grey,
-              ),
+            child: Icon(
+              icon,
+              size: 24,
+              color: isUnlocked ? Colors.white : Colors.grey,
             ),
           ),
         ),
-        SizedBox(height: 6),
+        const SizedBox(height: 6),
         SizedBox(
           width: 64,
           child: Text(
@@ -437,11 +465,11 @@ Future<T?> showAppBottomSheet<T>({
       builder: (_, controller) => Container(
         decoration: BoxDecoration(
           color: context.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: Column(
           children: [
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Container(
               width: 40,
               height: 4,
@@ -450,7 +478,7 @@ Future<T?> showAppBottomSheet<T>({
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Expanded(
               child: SingleChildScrollView(
                 controller: controller,
@@ -485,61 +513,127 @@ class UserAvatar extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: isPremium
-                ? Border.all(
-                    color: AppColors.accentYellow,
-                    width: 2.5,
-                  )
-                : null,
-            boxShadow: isPremium
-                ? [
-                    BoxShadow(
-                      color: AppColors.accentYellow.withOpacity(0.3),
-                      blurRadius: 10,
-                      spreadRadius: 1,
-                    )
-                  ]
-                : null,
-          ),
-          child: CircleAvatar(
-            radius: radius,
-            backgroundColor: AppColors.primary.withOpacity(0.2),
-            backgroundImage: photoUrl != null ? NetworkImage(photoUrl!) : null,
-            child: photoUrl == null
-                ? Text(
-                    initial,
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w800,
-                      fontSize: radius * 0.8,
-                    ),
-                  )
-                : null,
-          ),
+        CircleAvatar(
+          radius: radius,
+          backgroundColor: AppColors.primary.withOpacity(0.2),
+          backgroundImage: photoUrl != null ? NetworkImage(photoUrl!) : null,
+          child: photoUrl == null
+              ? Text(
+                  initial,
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w800,
+                    fontSize: radius * 0.8,
+                  ),
+                )
+              : null,
         ),
         if (isPremium)
           Positioned(
-            top: -6,
-            right: -8,
-            child: Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color: context.surface,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  )
-                ],
+            bottom: -6,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: context.surface, width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.3),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    )
+                  ],
+                ),
+                child: const Text(
+                  'PRO',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ),
-              child: const Text('👑', style: TextStyle(fontSize: 16)),
             ),
           ),
+      ],
+    );
+  }
+}
+
+// ─── GRADIENT ICON ───────────────────────────────────────────
+class GradientIcon extends StatelessWidget {
+  final IconData icon;
+  final double size;
+  final Gradient gradient;
+  final Color? fallbackColor;
+
+  const GradientIcon(this.icon, {required this.size, required this.gradient, this.fallbackColor, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ShaderMask(
+      blendMode: BlendMode.srcIn,
+      shaderCallback: (Rect bounds) {
+        return gradient.createShader(bounds);
+      },
+      child: FaIcon(
+        icon,
+        size: size * 0.8,
+        color: Colors.white,
+      ),
+    );
+  }
+}
+
+// ─── GLOW ICON ───────────────────────────────────────────
+class GlowIcon extends StatelessWidget {
+  final IconData icon;
+  final double size;
+  final Gradient gradient;
+  final double blurRadius;
+  final Offset offset;
+
+  const GlowIcon(
+    this.icon, {
+    required this.size,
+    required this.gradient,
+    this.blurRadius = 8.0,
+    this.offset = const Offset(0, 4),
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      clipBehavior: Clip.none,
+      children: [
+        // Glow effect
+        Positioned(
+          top: offset.dy,
+          left: offset.dx,
+          child: ImageFiltered(
+            imageFilter: ImageFilter.blur(sigmaX: blurRadius, sigmaY: blurRadius),
+            child: Opacity(
+              opacity: 0.5,
+              child: GradientIcon(
+                icon,
+                size: size,
+                gradient: gradient,
+              ),
+            ),
+          ),
+        ),
+        // Actual icon
+        GradientIcon(
+          icon,
+          size: size,
+          gradient: gradient,
+        ),
       ],
     );
   }

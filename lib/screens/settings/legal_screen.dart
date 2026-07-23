@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:ufit/theme/app_theme.dart';
 import 'package:ufit/theme/theme_ext.dart';
 
 class LegalScreen extends StatelessWidget {

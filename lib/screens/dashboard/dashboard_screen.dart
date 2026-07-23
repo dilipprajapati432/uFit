@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,13 +11,39 @@ import '../../theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
 import '../../services/ai_service.dart';
 import '../../providers/auth_provider.dart';
+
 import 'package:ufit/theme/theme_ext.dart';
+
+bool _hasRecordedAppOpen = false;
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<String?>(tabScrollEventProvider, (prev, next) {
+      if (next == '/dashboard') {
+        final controller = PrimaryScrollController.of(context);
+        if (controller.hasClients) {
+          controller.animateTo(
+            0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ref.read(tabScrollEventProvider.notifier).state = null;
+        });
+      }
+    });
+
+    if (!_hasRecordedAppOpen) {
+      _hasRecordedAppOpen = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(userProvider.notifier).recordAppOpen();
+      });
+    }
+
     final user = ref.watch(userProvider);
     final habits = ref.watch(habitsProvider);
     final workouts = ref.watch(workoutProvider);
@@ -30,19 +57,19 @@ class DashboardScreen extends ConsumerWidget {
 
     List<_ActivityItem> recentActivities = [];
     for (var w in workouts) {
-      recentActivities.add(_ActivityItem(title: w.name, subtitle: '${w.durationMinutes} min • ${w.caloriesBurned ?? 0} kcal', icon: '💪', color: AppColors.workoutColor, timestamp: w.startTime));
+      recentActivities.add(_ActivityItem(title: w.name, subtitle: '${w.durationMinutes} min • ${w.caloriesBurned ?? 0} kcal', icon: FontAwesomeIcons.dumbbell, color: AppColors.workoutColor, timestamp: w.startTime));
     }
     for (var w in water) {
-      recentActivities.add(_ActivityItem(title: 'Hydration', subtitle: '${w.amountMl} ml', icon: '💧', color: AppColors.waterColor, timestamp: w.timestamp));
+      recentActivities.add(_ActivityItem(title: 'Hydration', subtitle: '${w.amountMl} ml', icon: FontAwesomeIcons.droplet, color: AppColors.waterColor, timestamp: w.timestamp));
     }
     for (var s in sleep) {
-      recentActivities.add(_ActivityItem(title: 'Sleep', subtitle: '${s.durationHours.toStringAsFixed(1)} hrs', icon: '🌙', color: AppColors.sleepColor, timestamp: s.bedTime));
+      recentActivities.add(_ActivityItem(title: 'Sleep', subtitle: '${s.durationHours.toStringAsFixed(1)} hrs', icon: FontAwesomeIcons.moon, color: AppColors.sleepColor, timestamp: s.bedTime));
     }
     for (var m in mood) {
-      recentActivities.add(_ActivityItem(title: 'Mood', subtitle: MoodLog.emojiForScore(m.moodScore), icon: '😊', color: AppColors.moodColor, timestamp: m.timestamp));
+      recentActivities.add(_ActivityItem(title: 'Mood', subtitle: MoodLog.emojiForScore(m.moodScore), isMood: true, icon: FontAwesomeIcons.faceSmile, color: AppColors.moodColor, timestamp: m.timestamp));
     }
     for (var step in steps) {
-      recentActivities.add(_ActivityItem(title: 'Steps', subtitle: '${step.steps} steps', icon: '🚶', color: Colors.blueAccent, timestamp: step.date));
+      recentActivities.add(_ActivityItem(title: 'Steps', subtitle: '${step.steps} steps', icon: FontAwesomeIcons.personWalking, color: Colors.blueAccent, timestamp: step.date));
     }
     recentActivities.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     final displayActivities = recentActivities.take(5).toList();
@@ -82,31 +109,55 @@ class DashboardScreen extends ConsumerWidget {
                 ),
                 Text(
                   user?.name ?? 'Welcome!',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
             ),
             actions: [
+              if (user != null && user.currentAppStreak > 0)
+                Container(
+                  margin: EdgeInsets.only(right: isPremium ? 12 : 5),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentOrange.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.accentOrange.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const FaIcon(FontAwesomeIcons.fire, size: 14, color: AppColors.accentOrange),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${user.currentAppStreak}',
+                        style: const TextStyle(
+                          color: AppColors.accentOrange,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               GestureDetector(
                 onTap: () => context.push('/analytics'),
                 child: Container(
-                  margin: const EdgeInsets.only(right: 12),
+                  margin: EdgeInsets.only(right: isPremium ? 12 : 4),
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: context.surface,
                     shape: BoxShape.circle,
                     border: Border.all(color: context.border),
                   ),
-                  child: Icon(Icons.bar_chart_rounded, color: context.text, size: 20),
+                  child: FaIcon(FontAwesomeIcons.chartBar, color: context.text, size: 16),
                 ),
               ),
               if (!isPremium)
                 GestureDetector(
                   onTap: () => context.push('/premium'),
                   child: Container(
-                    margin: const EdgeInsets.only(right: 16),
+                    margin: const EdgeInsets.only(right: 6),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       gradient: AppColors.primaryGradient,
@@ -114,7 +165,7 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                     child: const Row(
                       children: [
-                        Text('✨', style: TextStyle(fontSize: 14)),
+                        FaIcon(FontAwesomeIcons.wandMagicSparkles, size: 11, color: Colors.white),
                         SizedBox(width: 4),
                         Text(
                           'Pro',
@@ -154,7 +205,7 @@ class DashboardScreen extends ConsumerWidget {
                     color: context.textSecondary,
                   ),
                 ),
-                SizedBox(height: 24),
+                const SizedBox(height: 24),
 
                 // Daily Summary Card
                 _DailySummaryCard(
@@ -166,11 +217,11 @@ class DashboardScreen extends ConsumerWidget {
                   stepsGoal: stepsGoal,
                   workoutsThisWeek: workouts.where((s) { final now = DateTime.now(); final weekStart = now.subtract(Duration(days: now.weekday - 1)); return s.startTime.isAfter(weekStart); }).length,
                 ).animate().fadeIn().slideY(begin: 0.2),
-                SizedBox(height: 24),
+                const SizedBox(height: 24),
 
                 // 1. Quick Log Row
                 const SectionHeader(title: 'Quick Log'),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 GridView.count(
                   padding: EdgeInsets.zero,
                   crossAxisCount: 3,
@@ -180,20 +231,20 @@ class DashboardScreen extends ConsumerWidget {
                   mainAxisSpacing: 10,
                   childAspectRatio: 1.05,
                   children: [
-                    _QuickLogButton(icon: '💧', label: 'Water', color: AppColors.waterColor, onTap: () => context.push('/water')),
-                    _QuickLogButton(icon: '🥗', label: 'Meals', color: Colors.orange, onTap: () => context.push('/meals')),
-                    _QuickLogButton(icon: '🚶', label: 'Steps', color: Colors.blueAccent, onTap: () => context.push('/steps')),
-                    _QuickLogButton(icon: '😊', label: 'Mood', color: AppColors.moodColor, onTap: () => context.push('/mood')),
-                    _QuickLogButton(icon: '⚖️', label: 'Weight', color: AppColors.weightColor, onTap: () => context.push('/weight')),
-                    _QuickLogButton(icon: '💪', label: 'Workout', color: AppColors.workoutColor, onTap: () => context.push('/workout')),
+                    _QuickLogButton(icon: FontAwesomeIcons.droplet, label: 'Water', color: AppColors.waterColor, onTap: () => context.push('/water')),
+                    _QuickLogButton(icon: FontAwesomeIcons.utensils, label: 'Meals', color: Colors.orange, onTap: () => context.push('/meals')),
+                    _QuickLogButton(icon: FontAwesomeIcons.personWalking, label: 'Steps', color: Colors.blueAccent, onTap: () => context.push('/steps')),
+                    _QuickLogButton(icon: FontAwesomeIcons.faceSmile, label: 'Mood', color: AppColors.moodColor, onTap: () => context.push('/mood')),
+                    _QuickLogButton(icon: FontAwesomeIcons.scaleBalanced, label: 'Weight', color: AppColors.weightColor, onTap: () => context.push('/weight')),
+                    _QuickLogButton(icon: FontAwesomeIcons.dumbbell, label: 'Workout', color: AppColors.workoutColor, onTap: () => context.push('/workout')),
                   ],
                 ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.2),
-                SizedBox(height: 24),
+                const SizedBox(height: 24),
 
                 // 2. Streak Showcase
                 if (habits.any((h) => h.currentStreak > 2)) ...[
-                  const SectionHeader(title: '🔥 Active Streaks'),
-                  SizedBox(height: 8),
+                  const SectionHeader(title: 'Active Streaks', icon: FontAwesomeIcons.fire),
+                  const SizedBox(height: 8),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
@@ -213,12 +264,12 @@ class DashboardScreen extends ConsumerWidget {
                           .toList(),
                     ),
                   ),
-                  SizedBox(height: 24),
+                  const SizedBox(height: 24),
                 ],
 
                 // 3. Stats Grid
                 const SectionHeader(title: 'Today\'s Stats'),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 GridView.count(
                   padding: EdgeInsets.zero,
                   crossAxisCount: 2,
@@ -233,42 +284,42 @@ class DashboardScreen extends ConsumerWidget {
                       value: sleep.isEmpty ? '--' : sleep.first.durationHours.toStringAsFixed(1),
                       unit: 'hrs',
                       color: AppColors.sleepColor,
-                      icon: Icons.bedtime_rounded,
+                      icon: FontAwesomeIcons.moon,
                     ),
                     StatTile(
                       label: 'Current Weight',
                       value: weight.isEmpty ? '--' : weight.first.weightKg.toStringAsFixed(1),
                       unit: 'kg',
                       color: AppColors.weightColor,
-                      icon: Icons.monitor_weight_rounded,
+                      icon: FontAwesomeIcons.scaleBalanced,
                     ),
                     StatTile(
                       label: "This Week's Workouts",
                       value: workouts.where((s) { final now = DateTime.now(); final todayStart = DateTime(now.year, now.month, now.day); final weekStart = todayStart.subtract(Duration(days: now.weekday - 1)); return s.startTime.isAfter(weekStart) || s.startTime.isAtSameMomentAs(weekStart); }).length.toString(),
                       unit: 'sessions',
                       color: AppColors.workoutColor,
-                      icon: Icons.fitness_center_rounded,
+                      icon: FontAwesomeIcons.dumbbell,
                     ),
                     StatTile(
                       label: "Today's Mood",
                       value: mood.isEmpty ? '--' : MoodLog.emojiForScore(mood.first.moodScore),
                       color: AppColors.moodColor,
-                      icon: Icons.sentiment_satisfied_rounded,
+                      icon: FontAwesomeIcons.faceSmile,
                     ),
                     StatTile(
                       label: 'Steps Today',
                       value: stepsToday.toString(),
                       unit: 'steps',
                       color: Colors.blueAccent,
-                      icon: Icons.directions_walk_rounded,
+                      icon: FontAwesomeIcons.personWalking,
                     ),
                   ],
                 ).animate().fadeIn(delay: 300.ms),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
 
                 // 4. AI Insights
                 const _AiInsightsCard().animate().fadeIn(delay: 320.ms).slideY(begin: 0.2),
-                SizedBox(height: 24),
+                const SizedBox(height: 24),
 
                 // 5. Today's Habits
                 SectionHeader(
@@ -276,12 +327,12 @@ class DashboardScreen extends ConsumerWidget {
                   action: 'See All',
                   onAction: () => context.push('/habits'),
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 if (todayHabits.isEmpty)
                   GlassCard(
                     child: Center(
                       child: Padding(
-                        padding: EdgeInsets.all(20),
+                        padding: const EdgeInsets.all(20),
                         child: Text('No habits for today. Add your first habit! 🌱',
                           style: TextStyle(color: context.textSecondary),
                           textAlign: TextAlign.center,
@@ -303,7 +354,7 @@ class DashboardScreen extends ConsumerWidget {
                       ).animate().fadeIn(delay: Duration(milliseconds: 200 + entry.key * 80)).slideX(begin: 0.2),
                     );
                   }),
-                SizedBox(height: 24),
+                const SizedBox(height: 24),
 
                 // 6. Recent Activities Timeline
                 if (displayActivities.isNotEmpty) ...[
@@ -316,7 +367,7 @@ class DashboardScreen extends ConsumerWidget {
                   const SizedBox(height: 24),
                 ],
 
-                SizedBox(height: 80),
+                const SizedBox(height: 80),
               ]),
             ),
           ),
@@ -370,12 +421,18 @@ class _AiInsightsCardState extends State<_AiInsightsCard> {
                 style: Theme.of(context).textTheme.headlineSmall,
                 children: const [
                   TextSpan(text: 'u', style: TextStyle(color: Color(0xFFFF8552))),
-                  TextSpan(text: 'Fit AI Insights ✨'),
+                  TextSpan(text: 'Fit AI Insights '),
+                  WidgetSpan(
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 2),
+                      child: FaIcon(FontAwesomeIcons.solidLightbulb, size: 16, color: AppColors.accentYellow),
+                    ),
+                  ),
                 ],
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.refresh, color: AppColors.primary, size: 22),
+              icon: const FaIcon(FontAwesomeIcons.arrowsRotate, color: AppColors.primary, size: 17),
               onPressed: _refresh,
               tooltip: 'Refresh Insights',
               padding: EdgeInsets.zero,
@@ -471,30 +528,30 @@ class _DailySummaryCard extends StatelessWidget {
                 strokeWidth: 6,
                 child: Text(
                   '${(overallProgress * 100).toInt()}%',
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
                   ),
                 ),
               ),
-              SizedBox(width: 20),
+              const SizedBox(width: 20),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Daily Progress',
                       style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       overallProgress >= 1.0
                           ? 'Amazing! All done! 🎉'
                           : overallProgress >= 0.5
                               ? 'Doing great! Keep it up!'
                               : 'Let\'s get moving today!',
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
@@ -505,32 +562,32 @@ class _DailySummaryCard extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           Row(
             children: [
               _ProgressItem(
-                icon: '✅',
+                icon: FontAwesomeIcons.squareCheck,
                 label: 'Habits',
                 value: '$habitsCompleted/$habitsTotal',
                 progress: habitProgress,
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               _ProgressItem(
-                icon: '💧',
+                icon: FontAwesomeIcons.droplet,
                 label: 'Water',
                 value: '${waterMl}ml',
                 progress: waterProgress,
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               _ProgressItem(
-                icon: '🚶',
+                icon: FontAwesomeIcons.personWalking,
                 label: 'Steps',
                 value: '$stepsToday',
                 progress: stepProgress,
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               _ProgressItem(
-                icon: '💪',
+                icon: FontAwesomeIcons.dumbbell,
                 label: 'Workouts',
                 value: '$workoutsThisWeek /wk',
                 progress: (workoutsThisWeek / 5).clamp(0.0, 1.0),
@@ -544,7 +601,7 @@ class _DailySummaryCard extends StatelessWidget {
 }
 
 class _ProgressItem extends StatelessWidget {
-  final String icon;
+  final IconData icon;
   final String label;
   final String value;
   final double progress;
@@ -562,30 +619,30 @@ class _ProgressItem extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.15),
+          color: Colors.white.withOpacity(0.3),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(icon, style: TextStyle(fontSize: 16)),
-            SizedBox(height: 4),
+            Icon(icon, size: 16, color: Colors.white),
+            const SizedBox(height: 4),
             Text(
               value,
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            SizedBox(height: 2),
+            const SizedBox(height: 2),
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
-              child: Text(label, style: TextStyle(color: Colors.white70, fontSize: 10)),
+              child: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10)),
             ),
-            SizedBox(height: 6),
+            const SizedBox(height: 6),
             LinearProgressIndicator(
               value: progress.clamp(0.0, 1.0),
-              backgroundColor: Colors.white.withOpacity(0.2),
+              backgroundColor: Colors.white.withOpacity(0.4),
               valueColor: const AlwaysStoppedAnimation(Colors.white),
               minHeight: 3,
               borderRadius: BorderRadius.circular(2),
@@ -598,7 +655,7 @@ class _ProgressItem extends StatelessWidget {
 }
 
 class _QuickLogButton extends StatelessWidget {
-  final String icon;
+  final IconData icon;
   final String label;
   final Color color;
   final VoidCallback onTap;
@@ -624,11 +681,15 @@ class _QuickLogButton extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(icon, style: TextStyle(fontSize: 22)),
-            SizedBox(height: 4),
+            FaIcon(
+              icon,
+              size: 22,
+              color: color,
+            ),
+            const SizedBox(height: 6),
             Text(
               label,
-              style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
+              style: TextStyle(color: context.text, fontSize: 12, fontWeight: FontWeight.w700),
             ),
           ],
         ),
@@ -650,8 +711,8 @@ class _HabitTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          Text(habit.icon, style: TextStyle(fontSize: 28)),
-          SizedBox(width: 12),
+          Text(habit.icon, style: const TextStyle(fontSize: 28)),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -666,7 +727,7 @@ class _HabitTile extends StatelessWidget {
                 if (habit.currentStreak > 0)
                   Text(
                     '🔥 ${habit.currentStreak} day streak',
-                    style: TextStyle(fontSize: 11, color: AppColors.accentOrange),
+                    style: const TextStyle(fontSize: 11, color: AppColors.accentOrange),
                   ),
               ],
             ),
@@ -686,7 +747,7 @@ class _HabitTile extends StatelessWidget {
                 ),
               ),
               child: isCompleted
-                  ? Icon(Icons.check, size: 16, color: Colors.white)
+                  ? const FaIcon(FontAwesomeIcons.check, size: 12, color: Colors.white)
                   : null,
             ),
           ),
@@ -707,20 +768,20 @@ class _RecentWorkoutCard extends StatelessWidget {
       gradient: AppColors.workoutGradient,
       child: Row(
         children: [
-          Text('💪', style: TextStyle(fontSize: 36)),
-          SizedBox(width: 16),
+          const FaIcon(FontAwesomeIcons.dumbbell, size: 28, color: Colors.white),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   session.name,
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
                   '${session.durationMinutes} min · ${session.exercises.length} exercises · ${session.caloriesBurned ?? 0} cal',
-                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
               ],
             ),
@@ -730,14 +791,14 @@ class _RecentWorkoutCard extends StatelessWidget {
             children: [
               Text(
                 session.type.toUpperCase(),
-                style: TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.w700),
+                style: const TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.w700),
               ),
-              SizedBox(height: 4),
+              const SizedBox(height: 4),
               Row(
                 children: List.generate(
                   5,
                   (i) => Icon(
-                    i < session.ratingOutOf5 ? Icons.star_rounded : Icons.star_outline_rounded,
+                    i < session.ratingOutOf5 ? FontAwesomeIcons.star : Icons.star_outline_rounded,
                     color: Colors.white,
                     size: 14,
                   ),
@@ -768,13 +829,17 @@ class _StreakCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(habit.icon, style: TextStyle(fontSize: 28)),
-          SizedBox(height: 8),
+            const GradientIcon(
+              FontAwesomeIcons.fire, 
+              size: 28, 
+              gradient: LinearGradient(colors: [AppColors.accentOrange, Colors.yellow]),
+            ),
+            const SizedBox(height: 8),
           Text(
             '🔥 ${habit.currentStreak}',
-            style: TextStyle(color: AppColors.accentOrange, fontWeight: FontWeight.w800, fontSize: 16),
+            style: const TextStyle(color: AppColors.accentOrange, fontWeight: FontWeight.w800, fontSize: 16),
           ),
-          SizedBox(height: 2),
+          const SizedBox(height: 2),
           Text(
             habit.name,
             style: TextStyle(color: context.textSecondary, fontSize: 11),
@@ -823,7 +888,7 @@ class _AiCoachFloatingButton extends StatelessWidget {
           border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
         ),
         child: const Center(
-          child: Icon(Icons.smart_toy_rounded, color: Colors.white, size: 30),
+          child: FaIcon(FontAwesomeIcons.robot, color: Colors.white, size: 24),
         ),
       )
       .animate(onPlay: (c) => c.repeat(reverse: true))
@@ -838,7 +903,8 @@ class _AiCoachFloatingButton extends StatelessWidget {
 class _ActivityItem {
   final String title;
   final String subtitle;
-  final String icon;
+  final IconData icon;
+  final bool isMood;
   final Color color;
   final DateTime timestamp;
 
@@ -846,6 +912,7 @@ class _ActivityItem {
     required this.title,
     required this.subtitle,
     required this.icon,
+    this.isMood = false,
     required this.color,
     required this.timestamp,
   });
@@ -882,18 +949,26 @@ class _ActivityTimeline extends StatelessWidget {
                   width: 40,
                   child: Column(
                     children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: activity.color.withOpacity(0.2),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: activity.color, width: 2),
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [activity.color.withOpacity(0.2), activity.color.withOpacity(0.05)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: activity.color.withOpacity(0.5), width: 1.5),
+                          ),
+                          child: Center(
+                            child: GradientIcon(
+                              activity.icon, 
+                              size: 16, 
+                              gradient: LinearGradient(colors: [activity.color, activity.color.withOpacity(0.7)]),
+                            ),
+                          ),
                         ),
-                        child: Center(
-                          child: Text(activity.icon, style: const TextStyle(fontSize: 14)),
-                        ),
-                      ),
                       if (!isLast)
                         Expanded(
                           child: Container(

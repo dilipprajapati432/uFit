@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:ufit/theme/app_theme.dart';
 import 'package:ufit/theme/theme_ext.dart';
+
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -36,7 +39,7 @@ class AboutScreen extends StatelessWidget {
                 'assets/images/ufit_wordmark.png',
                 height: 80,
                 fit: BoxFit.contain,
-                errorBuilder: (c, e, s) => const Icon(Icons.fitness_center_rounded, size: 80, color: AppColors.primary),
+                errorBuilder: (c, e, s) => const FaIcon(FontAwesomeIcons.dumbbell, size: 64, color: AppColors.primary),
               ),
             ),
             const SizedBox(height: 16),
@@ -69,13 +72,13 @@ class AboutScreen extends StatelessWidget {
             
             // Edge-to-edge Menu List
             _buildSection(context, [
-              _ListTile(
+              const _ListTile(
                 title: 'Developer',
                 trailingText: 'Dilip Prajapati',
               ),
               _ListTile(
                 title: 'Contact Support',
-                trailingIcon: Icons.mail_outline_rounded,
+                trailingIcon: FontAwesomeIcons.envelope,
                 onTap: () => _launchUrl('mailto:support.ufit@gmail.com'),
               ),
             ]),
@@ -85,17 +88,17 @@ class AboutScreen extends StatelessWidget {
             _buildSection(context, [
               _ListTile(
                 title: 'Terms of Service',
-                trailingIcon: Icons.chevron_right_rounded,
+                trailingIcon: FontAwesomeIcons.chevronRight,
                 onTap: () => context.push('/legal-terms'),
               ),
               _ListTile(
                 title: 'Privacy Policy',
-                trailingIcon: Icons.chevron_right_rounded,
+                trailingIcon: FontAwesomeIcons.chevronRight,
                 onTap: () => context.push('/legal-privacy'),
               ),
               _ListTile(
                 title: 'Open Source Licenses',
-                trailingIcon: Icons.chevron_right_rounded,
+                trailingIcon: FontAwesomeIcons.chevronRight,
                 onTap: () => showLicensePage(
                   context: context,
                   applicationName: 'uFit',

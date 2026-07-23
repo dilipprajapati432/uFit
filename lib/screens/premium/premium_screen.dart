@@ -1,9 +1,10 @@
 // lib/screens/premium/premium_screen.dart
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
-import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import '../../models/models.dart';
 import '../../providers/app_providers.dart';
@@ -56,7 +57,7 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    icon: Icon(Icons.close_rounded),
+                    icon: const FaIcon(FontAwesomeIcons.xmark, size: 19),
                     onPressed: () => Navigator.pop(context),
                   ),
                   TextButton(
@@ -65,7 +66,7 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                   ),
                 ],
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
 
               // Hero
               Center(
@@ -89,7 +90,7 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                         ],
                       ),
                     ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     RichText(
                       text: TextSpan(
                         style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800),
@@ -99,7 +100,7 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                         ],
                       ),
                     ).animate().fadeIn(delay: 100.ms),
-                    SizedBox(height: 6),
+                    const SizedBox(height: 6),
                     Text(
                       'Unlock your full potential',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: context.textSecondary),
@@ -107,7 +108,7 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                   ],
                 ),
               ),
-              SizedBox(height: 28),
+              const SizedBox(height: 28),
 
               // Feature list
               ..._features.asMap().entries.map((entry) => Padding(
@@ -121,9 +122,9 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                         color: AppColors.primary.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Center(child: Text(entry.value.$1, style: TextStyle(fontSize: 16))),
+                      child: Center(child: Text(entry.value.$1, style: const TextStyle(fontSize: 16))),
                     ),
-                    SizedBox(width: 12),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(entry.value.$2, style: Theme.of(context).textTheme.bodyMedium),
                     ),
@@ -131,7 +132,7 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                 ),
               ).animate().fadeIn(delay: Duration(milliseconds: 200 + entry.key * 60)).slideX(begin: 0.1)),
 
-              SizedBox(height: 28),
+              const SizedBox(height: 28),
 
               // Plan cards
               if (_isLoadingProducts)
@@ -150,7 +151,7 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                     ),
                   );
                 }),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
 
               // Purchase button
               SizedBox(
@@ -163,16 +164,16 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
                   child: _isProcessing
-                      ? SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                       : Text(
                           selectedPlan.period == 'lifetime'
                               ? 'Get Lifetime Access'
                               : 'Start ${selectedPlan.period == 'yearly' ? 'Yearly' : 'Monthly'} Plan',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                         ),
                 ),
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
 
               Center(
                 child: Text(
@@ -181,20 +182,20 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                   textAlign: TextAlign.center,
                 ),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
 
               // Trust badges
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _trustBadge('🔒', 'Secure'),
-                  SizedBox(width: 20),
+                  const SizedBox(width: 20),
                   _trustBadge('↩️', 'Cancel Anytime'),
-                  SizedBox(width: 20),
+                  const SizedBox(width: 20),
                   _trustBadge('⭐', '4.8 Rating'),
                 ],
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
 
               if (kDebugMode)
                 Padding(
@@ -202,7 +203,7 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                   child: Center(
                     child: TextButton(
                       onPressed: () => _onPaymentSuccess('DEV_UNLOCK'),
-                      child: Text('🛠️ Developer Unlock (Debug Only)', style: TextStyle(color: AppColors.accentOrange)),
+                      child: const Text('🛠️ Developer Unlock (Debug Only)', style: TextStyle(color: AppColors.accentOrange)),
                     ),
                   ),
                 ),
@@ -216,20 +217,20 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
   Widget _trustBadge(String emoji, String label) {
     return Column(
       children: [
-        Text(emoji, style: TextStyle(fontSize: 18)),
-        SizedBox(height: 4),
+        Text(emoji, style: const TextStyle(fontSize: 18)),
+        const SizedBox(height: 4),
         Text(label, style: TextStyle(color: context.textMuted, fontSize: 10)),
       ],
     );
   }
 
   static final _features = [
-    ('🎯', 'Unlimited habits & custom categories'),
-    ('📊', 'Advanced analytics & AI insights'),
+    ('🎯', 'Unlimited habits & routines'),
+    ('📈', 'All-time historical charts & analytics'),
+    ('🤖', 'Ad-free, unlimited uFit AI Coaching'),
+    ('📤', 'Ad-free verified PDF & CSV exports'),
     ('📸', 'Progress photos & body measurements'),
-    ('🏋️', 'Custom workout builder & templates'),
-    ('📤', 'Export your data (CSV/PDF)'),
-    ('🚫', 'No ads, ever'),
+    ('🚫', 'Zero ads anywhere in the app'),
     ('💬', 'Priority customer support'),
   ];
 
@@ -272,16 +273,16 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('🎉', style: TextStyle(fontSize: 56)),
-              SizedBox(height: 16),
+              const Text('🎉', style: TextStyle(fontSize: 56)),
+              const SizedBox(height: 16),
               Text('Welcome to Pro!', style: Theme.of(context).textTheme.headlineMedium),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text(
                 'You now have access to all premium features.',
                 style: TextStyle(color: context.textSecondary),
                 textAlign: TextAlign.center,
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -289,7 +290,7 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                     Navigator.pop(context);
                     Navigator.pop(context);
                   },
-                  child: Text('Awesome!'),
+                  child: const Text('Awesome!'),
                 ),
               ),
             ],
@@ -359,9 +360,9 @@ class _PlanCard extends StatelessWidget {
                     color: isSelected ? AppColors.primary : Colors.transparent,
                     border: Border.all(color: isSelected ? AppColors.primary : context.border, width: 2),
                   ),
-                  child: isSelected ? Icon(Icons.check, size: 14, color: Colors.white) : null,
+                  child: isSelected ? const Icon(Icons.check, size: 14, color: Colors.white) : null,
                 ),
-                SizedBox(width: 14),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -403,7 +404,7 @@ class _PlanCard extends StatelessWidget {
                   gradient: AppColors.primaryGradient,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text(
+                child: const Text(
                   'BEST VALUE',
                   style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800),
                 ),

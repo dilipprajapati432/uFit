@@ -1,5 +1,7 @@
 // lib/screens/mood/mood_screen.dart
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -95,7 +97,7 @@ class MoodScreen extends ConsumerWidget {
                           label: 'Entries Logged',
                           value: '${logs.length}',
                           color: AppColors.primary,
-                          icon: Icons.calendar_month_rounded,
+                          icon: FontAwesomeIcons.calendar,
                         ),
                       ),
                     ],

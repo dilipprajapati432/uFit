@@ -1,5 +1,7 @@
 // lib/screens/settings/settings_screen.dart
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,9 +14,11 @@ import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/export_service.dart';
+import '../../services/ad_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
 import 'package:ufit/theme/theme_ext.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -61,6 +65,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } catch (_) {}
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    AdService.loadRewardedAd();
+  }
+
   Future<void> _loadVersion() async {
     final info = await PackageInfo.fromPlatform();
     if (mounted) setState(() => _appVersion = '${info.version} (${info.buildNumber})');
@@ -104,7 +114,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         children: [
 
           // ── Account Section ────────────────────────────────
-          _SectionLabel('Account'),
+          const _SectionLabel('Account'),
           GlassCard(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -134,10 +144,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ).animate().fadeIn(),
           const SizedBox(height: 8),
-          _SettingTile(icon: Icons.edit_outlined, label: 'Edit Profile', onTap: () => context.push('/edit-profile')),
-          _SettingTile(icon: Icons.lock_outline_rounded, label: 'Change Password', onTap: () => _changePasswordSheet()),
+          _SettingTile(icon: FontAwesomeIcons.penToSquare, label: 'Edit Profile', onTap: () => context.push('/edit-profile')),
+          _SettingTile(icon: FontAwesomeIcons.lock, label: 'Change Password', onTap: () => _changePasswordSheet()),
           _SettingTile(
-            icon: Icons.verified_user_outlined,
+            icon: FontAwesomeIcons.shieldHalved,
             label: 'Account Type',
             trailing: isPremium 
                 ? (user?.premiumPlan == 'ufit_pro_monthly' 
@@ -155,7 +165,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 20),
 
           // ── Goals Section ─────────────────────────────────
-          _SectionLabel('Daily Goals'),
+          const _SectionLabel('Daily Goals'),
           _GoalTile(
             icon: '💧',
             label: 'Water Goal',
@@ -194,9 +204,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 20),
 
           // ── Notifications ─────────────────────────────────
-          _SectionLabel('Notifications'),
+          const _SectionLabel('Notifications'),
           _SwitchTile(
-            icon: Icons.local_drink_outlined,
+            icon: FontAwesomeIcons.glassWater,
             label: 'Water Reminders',
             subtitle: 'Tap to configure (${_waterIntervalHours}h interval, ${_formatTimeOfDay(_waterStartHour, _waterStartMinute)} - ${_formatTimeOfDay(_waterEndHour, _waterEndMinute)})',
             value: _waterRemindersOn,
@@ -213,7 +223,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             },
           ),
           _SwitchTile(
-            icon: Icons.task_alt_outlined,
+            icon: FontAwesomeIcons.listCheck,
             label: 'Habit Reminders',
             subtitle: 'Based on each habit schedule',
             value: _habitRemindersOn,
@@ -242,7 +252,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             },
           ),
           _SwitchTile(
-            icon: Icons.bedtime_outlined,
+            icon: FontAwesomeIcons.moon,
             label: 'Sleep Reminder',
             subtitle: 'Tap to change bedtime (${_formatTimeOfDay(_sleepHour, _sleepMinute)})',
             value: _sleepReminderOn,
@@ -295,9 +305,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 20),
 
           // ── Appearance ────────────────────────────────────
-          _SectionLabel('Appearance'),
+          const _SectionLabel('Appearance'),
           _SwitchTile(
-            icon: Icons.dark_mode_outlined,
+            icon: FontAwesomeIcons.circleHalfStroke,
             label: 'Dark Mode',
             value: isDark,
             onChanged: (v) => ref.read(themeProvider.notifier).setDark(v),
@@ -306,9 +316,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 20),
 
           // ── Data & Privacy ────────────────────────────────
-          _SectionLabel('Data & Privacy'),
+          const _SectionLabel('Data & Privacy'),
           _SettingTile(
-            icon: Icons.file_download_outlined,
+            icon: FontAwesomeIcons.fileArrowDown,
             label: 'Export My Data',
             isPro: !isPremium,
             onTap: () {
@@ -320,7 +330,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             },
           ),
           _SettingTile(
-            icon: Icons.privacy_tip_outlined,
+            icon: FontAwesomeIcons.userShield,
             label: 'Privacy Policy',
             onTap: () => context.push('/legal-privacy'),
           ),
@@ -330,26 +340,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
 
           // ── Support ───────────────────────────────────────
-          _SectionLabel('Support'),
-          _SettingTile(icon: Icons.info_outline_rounded, label: 'About uFit', onTap: () => context.push('/about')),
-          _SettingTile(icon: Icons.help_outline_rounded, label: 'Help Center', onTap: () => context.push('/help-center')),
-          _SettingTile(icon: Icons.mail_outline_rounded, label: 'Contact Support', onTap: () => _launchUrl('mailto:support.ufit@gmail.com?subject=uFit Support')),
-          _SettingTile(icon: Icons.star_outline_rounded, label: 'Rate uFit ⭐', onTap: () => _showInfoDialog('Rate uFit', 'Thank you for using uFit! ❤️\n\nWe will add the Play Store link here once the app is published. Stay tuned!')),
-          _SettingTile(icon: Icons.share_rounded, label: 'Share App', onTap: () => _shareApp()),
-          _SettingTile(icon: Icons.description_outlined, label: 'Terms of Service', onTap: () => context.push('/legal-terms')),
+          const _SectionLabel('Support'),
+          _SettingTile(icon: FontAwesomeIcons.circleInfo, label: 'About uFit', onTap: () => context.push('/about')),
+          _SettingTile(icon: FontAwesomeIcons.circleQuestion, label: 'Help Center', onTap: () => context.push('/help-center')),
+          _SettingTile(icon: FontAwesomeIcons.envelope, label: 'Contact Support', onTap: () => _launchUrl('mailto:support.ufit@gmail.com?subject=uFit Support')),
+          _SettingTile(icon: FontAwesomeIcons.star, label: 'Rate uFit ⭐', onTap: () => _showInfoDialog('Rate uFit', 'Thank you for using uFit! ❤️\n\nWe will add the Play Store link here once the app is published. Stay tuned!')),
+          _SettingTile(icon: FontAwesomeIcons.shareNodes, label: 'Share App', onTap: () => _shareApp()),
+          _SettingTile(icon: FontAwesomeIcons.fileContract, label: 'Terms of Service', onTap: () => context.push('/legal-terms')),
 
           const SizedBox(height: 20),
 
           // ── Sign Out ──────────────────────────────────────
-          _SectionLabel('Account Actions'),
+          const _SectionLabel('Account Actions'),
           _SettingTile(
-            icon: Icons.logout_rounded,
+            icon: FontAwesomeIcons.arrowRightFromBracket,
             label: 'Sign Out',
             isDestructive: true,
             onTap: () => _confirmSignOut(),
           ),
           _SettingTile(
-            icon: Icons.delete_forever_rounded,
+            icon: FontAwesomeIcons.trash,
             label: 'Delete Account',
             isDestructive: true,
             onTap: () => _confirmDeleteAccount(),
@@ -494,40 +504,175 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _exportData() {
+    DateTimeRange? selectedRange;
+    String rangeType = 'last30'; // last7, last30, all, custom
+
+    // Default to last 30
+    selectedRange = DateTimeRange(start: DateTime.now().subtract(const Duration(days: 30)), end: DateTime.now());
+
+    void updateRange(String type, StateSetter setModalState) async {
+      final now = DateTime.now();
+      if (type == 'last7') {
+        selectedRange = DateTimeRange(start: now.subtract(const Duration(days: 7)), end: now);
+      } else if (type == 'last30') {
+        selectedRange = DateTimeRange(start: now.subtract(const Duration(days: 30)), end: now);
+      } else if (type == 'all') {
+        selectedRange = null;
+      } else if (type == 'custom') {
+        final picked = await showDateRangePicker(
+          context: context,
+          firstDate: DateTime(2020),
+          lastDate: now,
+          builder: (context, child) {
+            return Theme(
+              data: Theme.of(context).copyWith(
+                colorScheme: ColorScheme.dark(
+                  primary: AppColors.primary,
+                  onPrimary: Colors.white,
+                  surface: context.card,
+                  onSurface: context.text,
+                ),
+              ),
+              child: child!,
+            );
+          },
+        );
+        if (picked != null) {
+          selectedRange = picked;
+        } else {
+          return; // Cancelled
+        }
+      }
+      setModalState(() {
+        rangeType = type;
+      });
+    }
+
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: context.surface,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Export Data', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 8),
-              Text('Choose the format for your data export.', style: TextStyle(color: context.textSecondary)),
-              const SizedBox(height: 24),
-              ListTile(
-                leading: const Icon(Icons.table_chart_outlined, color: AppColors.primary),
-                title: const Text('Export as CSV'),
-                subtitle: const Text('Best for spreadsheets (Excel, Google Sheets)'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _runExport(ExportService.exportAllData);
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.picture_as_pdf_outlined, color: Colors.redAccent),
-                title: const Text('Export as PDF Document'),
-                subtitle: const Text('Best for printing and sharing reports'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _runExport(ExportService.exportAllDataAsPDF);
-                },
-              ),
-            ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Export Data', style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 8),
+                Text('Choose a time range and format.', style: TextStyle(color: context.textSecondary)),
+                const SizedBox(height: 24),
+                
+                // Date Range Chips
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Time Range:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: context.text)),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Last 7 Days'),
+                      selected: rangeType == 'last7',
+                      onSelected: (_) => updateRange('last7', setModalState),
+                      selectedColor: AppColors.primary.withOpacity(0.2),
+                      labelStyle: TextStyle(color: rangeType == 'last7' ? AppColors.primary : context.text),
+                    ),
+                    ChoiceChip(
+                      label: const Text('Last 30 Days'),
+                      selected: rangeType == 'last30',
+                      onSelected: (_) => updateRange('last30', setModalState),
+                      selectedColor: AppColors.primary.withOpacity(0.2),
+                      labelStyle: TextStyle(color: rangeType == 'last30' ? AppColors.primary : context.text),
+                    ),
+                    ChoiceChip(
+                      label: const Text('All Time'),
+                      selected: rangeType == 'all',
+                      onSelected: (_) => updateRange('all', setModalState),
+                      selectedColor: AppColors.primary.withOpacity(0.2),
+                      labelStyle: TextStyle(color: rangeType == 'all' ? AppColors.primary : context.text),
+                    ),
+                    ChoiceChip(
+                      label: const Text('Custom...'),
+                      selected: rangeType == 'custom',
+                      onSelected: (_) => updateRange('custom', setModalState),
+                      selectedColor: AppColors.primary.withOpacity(0.2),
+                      labelStyle: TextStyle(color: rangeType == 'custom' ? AppColors.primary : context.text),
+                    ),
+                  ],
+                ),
+                if (rangeType == 'custom' && selectedRange != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'Selected: ${DateFormat('MMM d, yyyy').format(selectedRange!.start)} - ${DateFormat('MMM d, yyyy').format(selectedRange!.end)}',
+                    style: const TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                ],
+                
+                const SizedBox(height: 24),
+                
+                ListTile(
+                  leading: const Icon(Icons.table_chart_outlined, color: AppColors.primary),
+                  title: const Text('Export as CSV'),
+                  subtitle: const Text('Best for spreadsheets'),
+                  contentPadding: EdgeInsets.zero,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _runExport(() => ExportService.exportAllData(dateRange: selectedRange));
+                  },
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.picture_as_pdf_outlined, color: Colors.redAccent),
+                  title: const Text('Export as PDF Document'),
+                  subtitle: const Text('Best for printing and sharing reports'),
+                  contentPadding: EdgeInsets.zero,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    final isPremium = ref.read(premiumProvider);
+                    if (isPremium) {
+                      _runExport(() => ExportService.exportAllDataAsPDF(dateRange: selectedRange));
+                    } else {
+                      showDialog(
+                        context: context,
+                        builder: (ctx2) => AlertDialog(
+                          backgroundColor: Theme.of(context).cardColor,
+                          title: const Row(
+                            children: [
+                              Icon(Icons.videocam_outlined, color: AppColors.primary),
+                              SizedBox(width: 8),
+                              Text('Premium Feature'),
+                            ],
+                          ),
+                          content: const Text('Exporting reports as PDF is a premium feature. Watch a short video ad to generate this report for free, or upgrade to Pro for ad-free exports.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx2),
+                              child: const Text('Cancel'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.pop(ctx2);
+                                AdService.showRewardedAd(
+                                  onRewardEarned: () {
+                                    _runExport(() => ExportService.exportAllDataAsPDF(dateRange: selectedRange));
+                                  },
+                                );
+                              },
+                              child: const Text('Watch Ad'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -881,7 +1026,7 @@ class _SettingTile extends StatelessWidget {
             ),
             if (trailing != null) Text(trailing!, style: TextStyle(color: trailingColor ?? context.textMuted, fontSize: 13, fontWeight: FontWeight.w600)),
             const SizedBox(width: 4),
-            Icon(Icons.chevron_right_rounded, color: isDestructive ? AppColors.error.withOpacity(0.5) : context.textMuted, size: 18),
+            FaIcon(FontAwesomeIcons.chevronRight, color: isDestructive ? AppColors.error.withOpacity(0.5) : context.textMuted, size: 18),
           ],
         ),
       ),
@@ -916,7 +1061,7 @@ class _GoalTile extends StatelessWidget {
             Expanded(child: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500))),
             Text(value, style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.w700)),
             const SizedBox(width: 4),
-            Icon(Icons.chevron_right_rounded, color: context.textMuted, size: 18),
+            FaIcon(FontAwesomeIcons.chevronRight, color: context.textMuted, size: 14),
           ],
         ),
       ),
@@ -961,7 +1106,7 @@ class _SwitchTile extends StatelessWidget {
                 ],
               ),
             ),
-            Switch(value: value, onChanged: onChanged, activeColor: AppColors.primary),
+            Switch(value: value, onChanged: onChanged, activeThumbColor: AppColors.primary),
           ],
         ),
       ),

@@ -1,5 +1,7 @@
 // lib/screens/more_screen.dart
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -19,18 +21,18 @@ class MoreScreen extends ConsumerWidget {
     final firebaseUser = ref.watch(currentFirebaseUserProvider);
 
     final modules = [
-      ('⏳', 'Fasting', Colors.teal, '/fasting'),
-      ('💧', 'Water', AppColors.waterColor, '/water'),
-      ('🥗', 'Meals', Colors.orange, '/meals'),
-      ('💪', 'Workout', AppColors.workoutColor, '/workout'),
-      ('🌙', 'Sleep', AppColors.sleepColor, '/sleep'),
-      ('✅', 'Habits', AppColors.habitColor, '/habits'),
-      ('🚶', 'Steps', Colors.blueAccent, '/steps'),
-      ('⚖️', 'Weight', AppColors.weightColor, '/weight'),
-      ('😊', 'Mood', AppColors.moodColor, '/mood'),
-      ('👤', 'Profile', AppColors.primary, '/profile'),
-      ('⚙️', 'Settings', context.textSecondary, '/settings'),
-      ('✨', 'Go Pro', AppColors.accentYellow, '/premium'),
+      (FontAwesomeIcons.hourglassHalf, 'Fasting', Colors.teal, '/fasting'),
+      (FontAwesomeIcons.droplet, 'Water', AppColors.waterColor, '/water'),
+      (FontAwesomeIcons.utensils, 'Meals', Colors.orange, '/meals'),
+      (FontAwesomeIcons.dumbbell, 'Workout', AppColors.workoutColor, '/workout'),
+      (FontAwesomeIcons.moon, 'Sleep', AppColors.sleepColor, '/sleep'),
+      (FontAwesomeIcons.squareCheck, 'Habits', AppColors.habitColor, '/habits'),
+      (FontAwesomeIcons.personWalking, 'Steps', Colors.blueAccent, '/steps'),
+      (FontAwesomeIcons.scaleBalanced, 'Weight', AppColors.weightColor, '/weight'),
+      (FontAwesomeIcons.faceSmile, 'Mood', AppColors.moodColor, '/mood'),
+      (FontAwesomeIcons.userLarge, 'Profile', AppColors.primary, '/profile'),
+      (FontAwesomeIcons.gear, 'Settings', context.textSecondary, '/settings'),
+      (FontAwesomeIcons.wandMagicSparkles, 'Go Pro', AppColors.accentYellow, '/premium'),
     ];
 
     return Scaffold(
@@ -39,7 +41,7 @@ class MoreScreen extends ConsumerWidget {
         title: const Text('More'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_rounded),
+            icon: const FaIcon(FontAwesomeIcons.gear, size: 19),
             onPressed: () => context.push('/settings'),
           ),
         ],
@@ -70,7 +72,7 @@ class MoreScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-                if (isPremium) const Text('✨', style: TextStyle(fontSize: 20)),
+                if (isPremium) const FaIcon(FontAwesomeIcons.wandMagicSparkles, color: AppColors.accentYellow, size: 20),
               ],
             ),
           ).animate().fadeIn(),
@@ -79,13 +81,13 @@ class MoreScreen extends ConsumerWidget {
           if (!isPremium)
             GestureDetector(
               onTap: () => context.push('/premium'),
-              child: GradientCard(
+              child: const GradientCard(
                 gradient: AppColors.primaryGradient,
                 child: Row(
                   children: [
-                    const Text('✨', style: TextStyle(fontSize: 32)),
-                    const SizedBox(width: 16),
-                    const Expanded(
+                    const FaIcon(FontAwesomeIcons.wandMagicSparkles, size: 28, color: AppColors.accentYellow),
+                    SizedBox(width: 16),
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -95,7 +97,7 @@ class MoreScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    const Icon(Icons.chevron_right_rounded, color: Colors.white),
+                    FaIcon(FontAwesomeIcons.chevronRight, color: Colors.white, size: 19),
                   ],
                 ),
               ),
@@ -110,7 +112,7 @@ class MoreScreen extends ConsumerWidget {
             mainAxisSpacing: 12,
             childAspectRatio: 1.3,
             children: modules.asMap().entries.map((entry) {
-              final (emoji, label, color, route) = entry.value;
+              final (iconData, label, color, route) = entry.value;
               // Hide Pro tile if already premium
               if (label == 'Go Pro' && isPremium) return const SizedBox.shrink();
               return GestureDetector(
@@ -122,7 +124,7 @@ class MoreScreen extends ConsumerWidget {
                       Container(
                         width: 48, height: 48,
                         decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(14)),
-                        child: Center(child: Text(emoji, style: const TextStyle(fontSize: 24))),
+                        child: Center(child: FaIcon(iconData, color: color, size: 24)),
                       ),
                       const SizedBox(height: 10),
                       Text(label, style: Theme.of(context).textTheme.titleMedium),

@@ -1,5 +1,7 @@
 // lib/screens/auth/forgot_password_screen.dart
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -65,7 +67,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 // Back button
                 IconButton(
                   onPressed: () => context.canPop() ? context.pop() : context.go('/login'),
-                  icon: const Icon(Icons.arrow_back_rounded),
+                  icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 19),
                   style: IconButton.styleFrom(
                     backgroundColor: context.card,
                     padding: const EdgeInsets.all(10),
@@ -94,9 +96,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           letterSpacing: -1.5,
                           color: context.text,
                         ),
-                        children: [
+                        children: const [
                           TextSpan(text: 'u', style: TextStyle(color: AppColors.accentOrange)),
-                          const TextSpan(text: 'Fit'),
+                          TextSpan(text: 'Fit'),
                         ],
                       ),
                     ),
@@ -136,9 +138,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.error_outline, color: AppColors.error, size: 18),
+                        const Icon(Icons.error_outline, color: AppColors.error, size: 18),
                         const SizedBox(width: 8),
-                        Expanded(child: Text(_error!, style: TextStyle(color: AppColors.error, fontSize: 13))),
+                        Expanded(child: Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 13))),
                       ],
                     ),
                   ).animate().fadeIn().shake(),
@@ -155,7 +157,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             color: AppColors.primary.withOpacity(0.1),
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(
+                          child: const Icon(
                             Icons.mark_email_read_rounded,
                             color: AppColors.primary,
                             size: 64,
